@@ -712,16 +712,16 @@ let batch=[];
 if(cat==='all'){
 const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,bg:colorFor(i)}));
 const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
-batch=await searchArticles(t.q,t.bg,t.name,0,8);
+batch=await searchArticles(t.q,t.bg,t.name,0,10);
 }else{
 const t=resolveCat(cat)||{q:cat,name:cat,bg:'var(--sage)'};
-batch=await searchArticles(t.q,t.bg,t.name,st.offset,8);
+batch=await searchArticles(t.q,t.bg,t.name,st.offset,12);
 }
 const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
 const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
 st.items=st.items.concat(fresh);
 st.offset+=8;
-if(cat!=='all'&&(batch.length<8||fresh.length===0))st.done=true;
+if(cat!=='all'&&(batch.length<12||fresh.length===0))st.done=true;
 if(cat==='all'&&st.rot>=(TOPICS.length||8)*2)st.done=true;
 }catch(e){
 if(!st.items.length&&cat==='all')st.items=ARTICLES.slice();
@@ -732,25 +732,44 @@ renderFeed();
 }
 
 /* ============ RENDER: DISCOVER ============ */
+const TOPIC_ICON_LIST=[ICONS.brain,ICONS.column,ICONS.bolt,ICONS.atom,ICONS.heart,ICONS.spark];
+function topicIcon(i){return TOPIC_ICON_LIST[i%TOPIC_ICON_LIST.length];}
 function renderDiscover(){
-const g=$('#catGrid');
-g.innerHTML=CATS.map(c=>`<div class="cat-tile" data-cat="${c.id}" style="background:${c.bg}">
+const g=$('#catGrid');if(!g)return;
+const list=TOPICS.length?TOPICS:CATS.map(c=>({id:c.id,name:c.name,bg:c.bg}));
+g.innerHTML=list.map((c,i)=>`<div class="cat-tile" data-cat="${c.id}" style="background:${c.bg||'var(--sage)'}">
 <div class="grad"></div>
-<div class="ic">${svg(ICONS[c.icon])}</div>
+<div class="ic">${svg(topicIcon(i))}</div>
 <div class="nm">${c.name}</div>
-<div class="ct">${c.count} insights</div>
+<div class="ct">Jelajahi insight</div>
 </div>`).join('');
-renderDiscList('');
+const si=$('#searchInput');
+if(!si||!si.value.trim())renderDiscList('');
+}
+function discResults(items,label){
+const head=$('#discResultsHead').querySelector('h2');
+head.textContent=label;
+const list=$('#discList');
+list.innerHTML=items.length?items.map(cardHTML).join(''):emptyMsg('Coba kata kunci lain.');
+markSaved();
 }
 function renderDiscList(q){
-const head=$('#discResultsHead').querySelector('h2');
-let items;
-if(q){
-const t=q.toLowerCase();
-items=ARTICLES.filter(a=>a.title.toLowerCase().includes(t)||a.excerpt.toLowerCase().includes(t)||a.catName.toLowerCase().includes(t)||a.author.toLowerCase().includes(t));
-head.textContent=items.length?`Results (${items.length})`:'No results';
-}else{items=ARTICLES.slice(0,5);head.textContent='Trending Now';}
-$('#discList').innerHTML=items.length?items.map(cardHTML).join(''):`<div class="empty">${svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')}<p>Try a different search term.</p></div>`;
+if(q){const t=q.toLowerCase();const items=ARTICLES.filter(a=>a.title.toLowerCase().includes(t)||(a.excerpt||'').toLowerCase().includes(t)||(a.catName||'').toLowerCase().includes(t)||(a.author||'').toLowerCase().includes(t));discResults(items,items.length?`Hasil (${items.length})`:'Tidak ada hasil');}
+else{discResults(ARTICLES.slice(0,30),'Jelajahi Semua');}
+}
+let discTimer=null;
+function onDiscSearch(q){
+q=(q||'').trim();
+clearTimeout(discTimer);
+if(!q){renderDiscList('');return;}
+const head=$('#discResultsHead').querySelector('h2');head.textContent='Mencari\u2026';
+$('#discList').innerHTML=skeleton();
+discTimer=setTimeout(async()=>{
+try{const items=await searchArticles(q,'var(--sage)',q,0,18);
+if(items.length){discResults(items,`Hasil untuk \u201c${q}\u201d (${items.length})`);}
+else{renderDiscList(q);}
+}catch(e){renderDiscList(q);}
+},450);
 }
 
 /* ============ RENDER: LIBRARY ============ */
@@ -875,7 +894,7 @@ if(card){openArticle(card.dataset.id);return;}
 });
 document.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>showView(n.dataset.nav);});
 $('#searchTop').onclick=()=>{showView('discover');setTimeout(()=>$('#searchInput').focus(),100);};
-$('#searchInput').addEventListener('input',e=>renderDiscList(e.target.value.trim()));
+$('#searchInput').addEventListener('input',e=>onDiscSearch(e.target.value));
 $('#refreshFeed').onclick=()=>{toast('Memuat konten terbaru\u2026');loadContent(true);$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 $('#streakChip').onclick=()=>{showView('library');};
 
@@ -904,7 +923,7 @@ function sentences(t){const c=clean(t);const out=[];let buf='';for(let i=0;i<c.l
 function buildBody(plain){const lines=(plain||'').split('\n').map(s=>s.trim()).filter(Boolean);const out=[];lines.forEach((line,i)=>{const words=line.split(' ').length;const last=line[line.length-1];const heading=line.length<=52&&words<=7&&'.!?:,;)]'.indexOf(last)===-1&&!!lines[i+1];out.push(heading?('<h3>'+esc(line)+'</h3>'):('<p>'+esc(line)+'</p>'));});return out.join('')||('<p>'+esc(plain)+'</p>');}
 async function fetchCategory(cat){
 const seeds=SEEDS[cat.id];const q=seeds[dayOffset()%seeds.length];
-return await searchArticles(q,cat.bg,cat.name,0,10);
+return await searchArticles(q,cat.bg,cat.name,0,12);
 }
 async function fetchQuote(){try{const r=await fetch('https://api.quotable.io/random?maxLength=160');if(!r.ok)return null;const q=await r.json();return {content:q.content,author:q.author};}catch(e){return null;}}
 function interleave(list){const seen=new Set();const byCat={};list.forEach(a=>{const k=(a.title||'').toLowerCase();if(seen.has(k))return;seen.add(k);(byCat[a.cat]=byCat[a.cat]||[]).push(a);});const cats=Object.keys(byCat);const out=[];let i=0,added=true;while(added){added=false;cats.forEach(c=>{if(byCat[c][i]){out.push(byCat[c][i]);added=true;}});i++;}return out;}
