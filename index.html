@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#2d4f3d" />
 <title>Insight — Mindful Knowledge</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='6'%20fill='%232d4f3d'/%3E%3Cpath%20d='m12%206-1.2%203.6a1.3%201.3%200%200%201-.85.85L6.3%2011.7l2.65.85a1.3%201.3%200%200%201%20.85.85L11%2018l1.2-3.6a1.3%201.3%200%200%201%20.85-.85l2.65-.85-2.65-.85a1.3%201.3%200%200%201-.85-.85Z'%20fill='none'%20stroke='%23fbf9f8'%20stroke-width='1.6'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -232,7 +233,8 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .hero-track{display:flex;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .hero-track::-webkit-scrollbar{display:none}
 .hero-slide{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;position:relative}
-.hero-slide .ph{position:absolute;inset:0;background-size:cover;background-position:center}
+.hero-slide .ph{position:absolute;inset:0;background-size:contain;background-repeat:no-repeat;background-position:center}
+.hero-slide .ph-blur{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(26px) brightness(.55);transform:scale(1.2)}
 .hero-dots{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:5;pointer-events:none}
 .hero-dots .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55);transition:.2s}
 .hero-dots .dot.on{background:#fff;width:16px;border-radius:3px}
@@ -407,11 +409,11 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <header class="topbar" id="topbar">
 <div class="brand" id="brandBlock">
 <div class="logo">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-6 6c0 2 1 3.5 2.2 4.8.6.7 1 1.5 1 2.5v.7h5.6v-.7c0-1 .4-1.8 1-2.5C17 12.5 18 11 18 9a6 6 0 0 0-6-6Z"/><path d="M9.5 21h5"/></svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
 </div>
 <div class="tt">
-<span class="greet" id="greet">Selamat pagi</span>
-<span class="name" id="brandName">Hari</span>
+<span class="greet" id="greet" style="display:none"></span>
+<span class="name" id="brandName">Insightful Feeds</span>
 <span class="ph-title" id="brandTitle" style="display:none"></span>
 </div>
 </div>
@@ -1068,7 +1070,7 @@ function readerBodyHTML(a){return `<span class="reader-cat">${a.catName}</span>
 <h4>Sources & Citations</h4>
 ${a.cites.map((c,i)=>`<div class="cite"><span class="num">[${i+1}]</span><span>${c}</span></div>`).join('')}
 </div>`;}
-function heroSlideHTML(x){if(x&&x.image){return `<div class="hero-slide"><div class="ph img" data-bg="${String(x.image).replace(/'/g,'%27').replace(/"/g,'%22')}"></div></div>`;}return `<div class="hero-slide"><div class="ph" style="background:${(x&&x.bg)||'var(--sage)'}"></div></div>`;}
+function heroSlideHTML(x){if(x&&x.image){const u=String(x.image).replace(/'/g,'%27').replace(/"/g,'%22');return `<div class="hero-slide"><div class="ph-blur" data-bg="${u}"></div><div class="ph img" data-bg="${u}"></div></div>`;}return `<div class="hero-slide"><div class="ph" style="background:${(x&&x.bg)||'var(--sage)'}"></div></div>`;}
 function loadHeroBg(ph){if(!ph)return;const u=ph.getAttribute('data-bg');if(u){ph.style.backgroundImage="url('"+u+"')";ph.removeAttribute('data-bg');}}
 function maybeLoadFull(a){
 if(a&&!a.full&&/^w_/.test(a.id||'')){
@@ -1088,12 +1090,13 @@ maybeLoadFull(a);
 }
 function bindHeroCarousel(){
 const track=$('#heroTrack');if(!track||track._bound)return;track._bound=1;
-try{const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){loadHeroBg(e.target);io.unobserve(e.target);}});},{root:track,rootMargin:'0px 150% 0px 150%'});track.querySelectorAll('.ph[data-bg]').forEach(d=>io.observe(d));}catch(e){track.querySelectorAll('.ph[data-bg]').forEach(loadHeroBg);}
+try{const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){loadHeroBg(e.target);io.unobserve(e.target);}});},{root:track,rootMargin:'0px 150% 0px 150%'});track.querySelectorAll('[data-bg]').forEach(d=>io.observe(d));}catch(e){track.querySelectorAll('[data-bg]').forEach(loadHeroBg);}
 let t;
 track.addEventListener('scroll',()=>{clearTimeout(t);t=setTimeout(()=>{const i=Math.round(track.scrollLeft/Math.max(1,track.clientWidth));if(i!==readerImgIndex)setReaderIndex(i);},80);},{passive:true});
 }
 function openArticle(id,list){
 const a=ARTICLE_INDEX[id]||ARTICLES.find(x=>x.id===id);if(!a)return;
+if(lastView&&lastView!=='read'){const _s=$('#scroll');if(_s)scrollPos[lastView]=_s.scrollTop;}
 let imgs=[a];
 if(list&&list.length){const f=list.filter(x=>x&&x.image&&x.id);if(f.length>1&&f.some(x=>x.id===a.id))imgs=f;}
 let idx=imgs.findIndex(x=>x.id===a.id);if(idx<0)idx=0;
@@ -1102,9 +1105,10 @@ readerImgs=imgs;readerImgIndex=idx;
 currentArticle=a;
 const saved=S.saved.includes(a.id), read=S.read.includes(a.id);
 const carousel=imgs.length>1;
-const heroHtml=carousel?`<div class="hero-track" id="heroTrack">${imgs.map(heroSlideHTML).join('')}</div><div class="grad" id="readerGrad"></div><div class="hero-dots" id="heroDots">${imgs.map((x,i)=>`<span class="dot${i===idx?' on':''}"></span>`).join('')}</div>`:`${coverPH(a)}<div class="grad" id="readerGrad"></div>`;
+const photo=!!(list&&list.length&&a.image);
+const heroHtml=photo?`<div class="hero-track" id="heroTrack">${imgs.map(heroSlideHTML).join('')}</div><div class="grad" id="readerGrad"></div>${carousel?`<div class="hero-dots" id="heroDots">${imgs.map((x,i)=>`<span class="dot${i===idx?' on':''}"></span>`).join('')}</div>`:''}`:`${coverPH(a)}<div class="grad" id="readerGrad"></div>`;
 $('#view-read').innerHTML=`
-<div class="reader-hero${carousel?' has-carousel':''}" id="readerHero">
+<div class="reader-hero${photo?' has-carousel':''}" id="readerHero">
 ${heroHtml}
 </div>
 <div class="reader-body">
@@ -1130,12 +1134,12 @@ ${a.cites.map((c,i)=>`<div class="cite"><span class="num">[${i+1}]</span><span>$
 <button class="btn-primary${read?' done':''}" id="markRead">${read?svg('<path d="M20 6 9 17l-5-5"/>')+' Completed':'Mark as Read'}</button>
 <button class="btn-ghost${saved?' saved':''}" id="readerSave">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}</button>
 </div>`;
-$('#readerBack').onclick=()=>{showView(lastView,true);};
+$('#readerBack').onclick=()=>{const tid=currentArticle&&currentArticle.id;showView(lastView,true);if(tid){requestAnimationFrame(()=>{const c=document.querySelector('#view-'+lastView+' [data-id="'+tid+'"]');if(c)c.scrollIntoView({block:'center'});});}};
 $('#markRead').onclick=()=>toggleRead(currentArticle.id);
 $('#readerSave').onclick=()=>{toggleSave(currentArticle.id);const b=$('#readerSave');b.classList.toggle('saved',S.saved.includes(currentArticle.id));};
 showView('read',true,false);
 $('#scroll').scrollTo({top:0});
-if(carousel){const g=$('#readerGrad');if(g)g.style.opacity='0';const track=$('#heroTrack');if(track){track.scrollLeft=track.clientWidth*idx;const slides=track.querySelectorAll('.hero-slide');const cur=slides[idx];loadHeroBg(cur&&cur.querySelector('.ph[data-bg]'));bindHeroCarousel();}}
+if(photo){const g=$('#readerGrad');if(g)g.style.opacity='0';const track=$('#heroTrack');if(track){track.scrollLeft=track.clientWidth*idx;const slides=track.querySelectorAll('.hero-slide');const cur=slides[idx];if(cur)cur.querySelectorAll('[data-bg]').forEach(loadHeroBg);bindHeroCarousel();}}
 maybeLoadFull(a);
 }
 function toggleRead(id){
@@ -1156,6 +1160,8 @@ save();refreshAll();
 
 /* ============ GALERI ============ */
 let galleryTheme='semua';
+const scrollPos={};
+let _hashLock=false;
 const galleryCache={};
 const GALLERY_THEMES=[
 {id:'semua',name:'Semua',all:true},
@@ -1313,7 +1319,7 @@ st.loading=false;renderGallery();
 
 /* ============ NAV / VIEWS ============ */
 const VIEW_TITLES={discover:'Explore by Topic',gallery:'Galeri Visual',library:'Growth Library',profile:'Profil'};
-function setTopbar(name){const g=$('#greet'),nm=$('#brandName'),tl=$('#brandTitle');if(name&&VIEW_TITLES[name]){if(g)g.style.display='none';if(nm)nm.style.display='none';if(tl){tl.textContent=VIEW_TITLES[name];tl.style.display='';}}else{if(g)g.style.display='';if(nm)nm.style.display='';if(tl)tl.style.display='none';}}
+function setTopbar(name){const g=$('#greet'),nm=$('#brandName'),tl=$('#brandTitle');if(g)g.style.display='none';if(name&&VIEW_TITLES[name]){if(nm)nm.style.display='none';if(tl){tl.textContent=VIEW_TITLES[name];tl.style.display='';}}else{if(nm)nm.style.display='';if(tl)tl.style.display='none';}}
 function showView(name,fromReader,updateNav=true){
 document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
 $('#view-'+name).classList.add('active');
@@ -1323,12 +1329,16 @@ if(name!=='read'){lastView=name;}
 if(updateNav && ['home','discover','gallery','library','profile'].includes(name)){
 document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===name));
 }
-$('#scroll').scrollTo({top:0});
 if(name==='discover')renderDiscover();
 if(name==='gallery')renderGallery();
 if(name==='library')renderLibrary();
 if(name==='profile')renderProfile();
+const _restore=(fromReader&&scrollPos[name]!=null)?scrollPos[name]:0;
+requestAnimationFrame(()=>{const s=$('#scroll');if(s)s.scrollTo({top:_restore});});
+syncHash(name);
 }
+function syncHash(name){const h=name==='read'?('#/read/'+((currentArticle&&currentArticle.id)||'')):('#/'+name);if(location.hash!==h){_hashLock=true;location.hash=h;setTimeout(()=>{_hashLock=false;},0);}}
+function applyHash(){const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);const name=parts[0]||'home';if(name==='read'){const id=parts[1];if(id&&ARTICLE_INDEX[id]){if(!(currentArticle&&currentArticle.id===id&&$('#view-read').classList.contains('active')))openArticle(id);}else{showView('home');}return;}const valid=['home','discover','gallery','library','profile'];const t=valid.includes(name)?name:'home';if(!$('#view-'+t).classList.contains('active'))showView(t);}
 function refreshAll(){renderFeed();if($('#view-library').classList.contains('active'))renderLibrary();if($('#view-profile').classList.contains('active'))renderProfile();if($('#view-discover').classList.contains('active')){const q=$('#searchInput').value;renderDiscList(q);}
 document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});
 }
@@ -1357,8 +1367,7 @@ $('#searchInput').addEventListener('input',e=>onDiscSearch(e.target.value));
 $('#refreshFeed').onclick=()=>{toast('Memuat konten terbaru\u2026');loadContent(true);$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 const _sk=$('#streakChip');if(_sk)_sk.onclick=()=>{showView('library');};
 
-/* greeting */
-(function(){const h=new Date().getHours();$('#greet').textContent=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam';})();
+/* brand title fixed: Insightful Feeds */
 
 /* ============ LIVE CONTENT: Wikipedia (ID) + Quotable + Facts ============ */
 /* Search-driven discovery: the pool is dynamic (rotates daily), not a fixed title list. */
@@ -1558,6 +1567,8 @@ renderChips();renderFeed();renderHub();
 const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
 document.addEventListener('click',(e)=>{if(hubOpen&&!e.target.closest('.hub-head')){hubOpen=false;const m=$('#hubMenu');if(m)m.classList.remove('open');const t=$('#hubToggle');if(t)t.setAttribute('aria-expanded','false');}});
 loadTopics();loadContent();loadFacts();loadNews();loadHistory();
+window.addEventListener('hashchange',()=>{if(_hashLock)return;applyHash();});
+if(location.hash&&location.hash.length>2){applyHash();}else{syncHash('home');}
 </script>
 </body>
 </html>
