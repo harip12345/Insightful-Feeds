@@ -377,6 +377,8 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <section class="view active" id="view-home">
 <div class="chips" id="feedChips"></div>
 <div id="quoteSlot"></div>
+<div id="newsSlot"></div>
+<div id="historySlot"></div>
 <div id="factsSlot"></div>
 
 <div class="sec-head"><div><h2>Trending Now</h2><div class="sub">Sorotan pilihan editor</div></div></div>
@@ -613,7 +615,7 @@ const CURATED_TOPICS=[
 {q:'Arsitektur',label:'🏰 Arsitektur'},
 {q:'Kuliner',label:'🍜 Kuliner'},
 {q:'Peradaban kuno',label:'🗿 Peradaban Kuno'},
-{q:'Penjelajahan',label:'     Penjelajahan'},
+{q:'Penjelajahan',label:'         Penjelajahan'},
 {q:'Samudra',label:'🌊 Samudra'},
 {q:'Ekonomi',label:'📈 Ekonomi'},
 {q:'Bahasa',label:'🗣️ Bahasa'},
@@ -636,10 +638,10 @@ function resolveCat(id){const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=
 /* ============ RENDER: CHIPS ============ */
 let activeSub='all';
 const SUBFILTERS=[{id:'all',label:'Semua'},{id:'tokoh',label:'🧑 Tokoh'},{id:'tempat',label:'📍 Tempat'},{id:'organisasi',label:'🏛️ Organisasi'},{id:'karya',label:'🎬 Karya'},{id:'peristiwa',label:'📅 Peristiwa'},{id:'konsep',label:'💡 Konsep'}];
-function isTopicCat(id){return id!=='all'&&id!=='research'&&id!=='art';}
+function isTopicCat(id){return id!=='all';}
 function renderChips(){
 const wrap=$('#feedChips');if(!wrap)return;wrap.innerHTML='';
-const all=[{id:'all',name:'Untukmu'},{id:'research',name:'🔬 Riset'},{id:'art',name:'🎨 Galeri Seni'}].concat(TOPICS);
+const all=[{id:'all',name:'Untukmu'}].concat(TOPICS);
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
 b.textContent=c.label||c.name;
@@ -856,10 +858,6 @@ if(cat==='all'){
 const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,label:n,bg:colorFor(i)}));
 const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
 batch=await fetchTopicSample(t,12);
-}else if(cat==='research'){
-batch=await fetchResearch(st.offset,12);
-}else if(cat==='art'){
-batch=await fetchArt(st.offset,12);
 }else{
 const t=resolveCat(cat)||{q:cat,name:cat,label:cat,bg:'var(--sage)'};
 if(!st.catDone){try{const res=await loadTopicBatch(t,st,10);batch=res.items;if(res.done)st.catDone=true;}catch(e){st.catDone=true;}}
@@ -869,7 +867,6 @@ const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
 const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
 st.items=st.items.concat(fresh);
 if(cat==='all'){st.offset+=12;if(st.rot>=(TOPICS.length||8)*2)st.done=true;}
-else if(cat==='research'||cat==='art'){st.offset+=12;if(batch.length===0||fresh.length===0)st.done=true;}
 else{if(st.catDone&&fresh.length===0)st.done=true;}
 }catch(e){
 if(!st.items.length&&cat==='all')st.items=ARTICLES.slice();
@@ -1077,7 +1074,7 @@ science:['ilmu saraf','tidur','evolusi','fisika','genetika','kosmologi','otak ma
 wellbeing:['kebahagiaan','meditasi','kesehatan mental','kesadaran penuh','optimisme','ketahanan mental','kesejahteraan'],
 creativity:['kreativitas','inovasi','imajinasi','seni','desain','pemecahan masalah','musik']
 };
-const CONTENT_KEY='insight_content_v5';
+const CONTENT_KEY='insight_content_v6';
 const WIKI='https://id.wikipedia.org/w/api.php';
 let DAILY_QUOTE=null;
 function todayStr(){return new Date().toISOString().slice(0,10);}
@@ -1091,7 +1088,23 @@ async function fetchCategory(cat){
 const seeds=SEEDS[cat.id];const q=seeds[dayOffset()%seeds.length];
 return await searchArticles(q,cat.bg,cat.name,0,12);
 }
-async function fetchQuote(){try{const r=await fetch('https://api.quotable.io/random?maxLength=160');if(!r.ok)return null;const q=await r.json();return {content:q.content,author:q.author};}catch(e){return null;}}
+const ID_QUOTES=[
+{content:'Bermimpilah setinggi langit. Jika engkau jatuh, engkau akan jatuh di antara bintang-bintang.',author:'Ir. Soekarno'},
+{content:'Beri aku sepuluh pemuda, niscaya akan kuguncangkan dunia.',author:'Ir. Soekarno'},
+{content:'Habis gelap terbitlah terang.',author:'R.A. Kartini'},
+{content:'Orang boleh pandai setinggi langit, tapi selama ia tidak menulis, ia akan hilang di dalam masyarakat dan dari sejarah.',author:'Pramoedya Ananta Toer'},
+{content:'Aku rela dipenjara asalkan bersama buku, karena dengan buku aku bebas.',author:'Mohammad Hatta'},
+{content:'Idealisme adalah kemewahan terakhir yang hanya dimiliki oleh pemuda.',author:'Tan Malaka'},
+{content:'Sekali berarti, sudah itu mati.',author:'Chairil Anwar'},
+{content:'Kalau hidup sekadar hidup, babi di hutan juga hidup. Kalau bekerja sekadar bekerja, kera juga bekerja.',author:'Buya Hamka'},
+{content:'Tut wuri handayani \u2014 dari belakang, seorang pendidik memberikan dorongan dan arahan.',author:'Ki Hajar Dewantara'},
+{content:'Berani bermimpi adalah langkah pertama untuk mengubah keadaan.',author:'Najwa Shihab'},
+{content:'Ilmu itu lebih baik daripada harta. Ilmu menjaga engkau, dan engkau menjaga harta.',author:'Pepatah'},
+{content:'Sedikit demi sedikit, lama-lama menjadi bukit.',author:'Peribahasa Indonesia'},
+{content:'Berakit-rakit ke hulu, berenang-renang ke tepian; bersakit-sakit dahulu, bersenang-senang kemudian.',author:'Peribahasa Indonesia'},
+{content:'Tak ada gading yang tak retak.',author:'Peribahasa Indonesia'}
+];
+async function fetchQuote(){try{const q=ID_QUOTES[dayOffset()%ID_QUOTES.length];return {content:q.content,author:q.author};}catch(e){return null;}}
 function interleave(list){const seen=new Set();const byCat={};list.forEach(a=>{const k=(a.title||'').toLowerCase();if(seen.has(k))return;seen.add(k);(byCat[a.cat]=byCat[a.cat]||[]).push(a);});const cats=Object.keys(byCat);const out=[];let i=0,added=true;while(added){added=false;cats.forEach(c=>{if(byCat[c][i]){out.push(byCat[c][i]);added=true;}});i++;}return out;}
 function renderQuote(){const slot=$('#quoteSlot');if(!slot)return;if(!DAILY_QUOTE){slot.innerHTML='';return;}slot.innerHTML='<div class="quote-card"><div class="q-mark">\u201c</div><p class="q-text">'+esc(DAILY_QUOTE.content)+'</p><div class="q-auth">\u2014 '+esc(DAILY_QUOTE.author)+'</div></div>';}
 function onContentReady(updated){
@@ -1132,7 +1145,7 @@ renderChips();
 }
 
 /* ---- Daily facts: Tahukah Kamu? ---- */
-const FACTS_KEY='insight_facts_v1';
+const FACTS_KEY='insight_facts_v3';
 const FALLBACK_FACTS=[
 {year:'',text:'Otak manusia menghasilkan sekitar 12\u201325 watt listrik saat bangun \u2014 cukup untuk menyalakan lampu LED kecil.',url:'',thumb:'',title:''},
 {year:'',text:'Madu praktis tidak pernah basi; madu berusia ribuan tahun masih layak dikonsumsi.',url:'',thumb:'',title:''},
@@ -1141,115 +1154,81 @@ const FALLBACK_FACTS=[
 {year:'',text:'Menara Eiffel bisa bertambah tinggi sekitar 15 cm saat cuaca panas akibat pemuaian logam.',url:'',thumb:'',title:''}
 ];
 let FACTS=[];
-async function fetchWikiFacts(){
+let NEWS=[];
+let HISTORY=[];
+let factsShown=8;
+const NEWS_KEY='insight_news_v1';
+const HISTORY_KEY='insight_history_v1';
+function pgInfo(pg){pg=pg||{};return {url:(pg.content_urls&&pg.content_urls.desktop&&pg.content_urls.desktop.page)||'',thumb:(pg.thumbnail&&pg.thumbnail.source)||'',title:(pg.titles&&pg.titles.normalized)||pg.normalizedtitle||pg.title||''};}
+async function fetchOnThisDay(type){
 const d=new Date();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
-const url='https://id.wikipedia.org/api/rest_v1/feed/onthisday/selected/'+mm+'/'+dd;
-const r=await fetch(url);if(!r.ok)throw new Error('facts '+r.status);
-const j=await r.json();const ev=(j.selected||j.events||[]);
-return ev.map(e=>{const pg=(e.pages&&e.pages[0])||{};return {year:e.year||'',text:clean(e.text),url:(pg.content_urls&&pg.content_urls.desktop&&pg.content_urls.desktop.page)||'',thumb:(pg.thumbnail&&pg.thumbnail.source)||'',title:pg.title||''};}).filter(f=>f.text&&f.text.length>10).slice(0,12);
+const url='https://id.wikipedia.org/api/rest_v1/feed/onthisday/'+type+'/'+mm+'/'+dd;
+const r=await fetch(url);if(!r.ok)throw new Error('otd '+r.status);
+const j=await r.json();const ev=(j[type]||j.selected||j.events||[]);
+return ev.map(e=>{const info=pgInfo((e.pages&&e.pages[0])||{});return {year:e.year||'',text:clean(e.text),url:info.url,thumb:info.thumb,title:info.title};}).filter(f=>f.text&&f.text.length>10);
 }
-async function fetchUselessFacts(n){
-const reqs=Array.from({length:n||6},()=>fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en').then(r=>r.ok?r.json():null).catch(()=>null));
-const res=await Promise.all(reqs);
-return res.filter(Boolean).map(f=>({year:'',text:clean(f.text),url:f.permalink||f.source_url||'',thumb:'',title:'Fakta unik'}));
+async function fetchNews(){
+const d=new Date();const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
+const url='https://id.wikipedia.org/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd;
+const r=await fetch(url);if(!r.ok)throw new Error('news '+r.status);
+const j=await r.json();const news=(j.news||[]);
+return news.map(n=>{const links=n.links||[];const pg=links.find(l=>l&&l.thumbnail)||links[0]||{};const info=pgInfo(pg);const txt=clean((n.story||'').replace(/<[^>]+>/g,' '));return {year:'',text:txt,url:info.url,thumb:info.thumb,title:info.title};}).filter(f=>f.text&&f.text.length>10);
 }
 async function fetchFacts(){
-const [wiki,uf]=await Promise.all([fetchWikiFacts().catch(()=>[]),fetchUselessFacts(6).catch(()=>[])]);
-let all=(wiki||[]).concat(uf||[]);
+const [ev,sel]=await Promise.all([fetchOnThisDay('events').catch(()=>[]),fetchOnThisDay('selected').catch(()=>[])]);
+let all=(ev||[]).concat(sel||[]);
 const seen=new Set();all=all.filter(f=>{if(!f.text)return false;const k=f.text.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
 if(all.length){const off=dayOffset()%all.length;all=all.slice(off).concat(all.slice(0,off));}
-return all.slice(0,16);
+return all.slice(0,60);
+}
+function railCard(a,iconPath,kicker,mainText){
+const img=a.image?`<div class="fact-thumb ph img" style="background-image:url('${String(a.image).replace(/'/g,'%27')}')"></div>`:'';
+return `<div class="fact-card" data-id="${a.id}">${img}<div class="fact-body"><span class="fact-kicker">${svg(iconPath)} ${esc(kicker)}</span><p>${esc(mainText)}</p></div></div>`;
+}
+function mkFactArticle(f,catName,pfx,i){
+const hasPage=!!f.title;
+const id=(hasPage?'w_':'')+pfx+'_'+i+'_'+slug((f.title||f.text||'x').toString()).slice(0,40);
+const body='<p>'+esc(f.text||'')+'</p>'+(f.url?('<p><a href="'+f.url+'" target="_blank" rel="noopener">Baca selengkapnya di Wikipedia \u2192</a></p>'):'');
+const a={id:id,cat:'fakta',catName:catName,title:(f.title||(f.text||'').slice(0,70)),wikiTitle:f.title||'',kind:'konsep',full:!hasPage,author:'Wikipedia',role:'Ensiklopedia bebas',rt:2,bg:'linear-gradient(135deg,#2d4f3d,#1d3528)',image:f.thumb||'',excerpt:(f.text||'').slice(0,180),takeaways:[f.text].filter(Boolean),body:body,cites:['Wikipedia \u2014 Ensiklopedia bebas. '+(f.url||'')].filter(Boolean),url:f.url||'',year:f.year||''};
+ARTICLE_INDEX[id]=a;return a;
+}
+function renderNews(){
+const slot=$('#newsSlot');if(!slot)return;
+if(!NEWS.length){slot.innerHTML='';return;}
+const cards=NEWS.slice(0,12).map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>','Peristiwa terkini',f.text);}).join('');
+slot.innerHTML='<div class="sec-head"><div><h2>Peristiwa Terkini</h2><div class="sub">Kabar dunia terbaru dari Wikipedia</div></div></div><div class="facts-rail">'+cards+'</div>';
+}
+function renderHistory(){
+const slot=$('#historySlot');if(!slot)return;
+if(!HISTORY.length){slot.innerHTML='';return;}
+const cards=HISTORY.slice(0,18).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);return railCard(a,'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>',(f.year?('Tahun '+f.year):'Hari ini'),f.text);}).join('');
+slot.innerHTML='<div class="sec-head"><div><h2>Hari Ini dalam Sejarah</h2><div class="sub">Peristiwa penting pada tanggal ini</div></div></div><div class="facts-rail">'+cards+'</div>';
 }
 function renderFacts(){
 const slot=$('#factsSlot');if(!slot)return;
-const facts=FACTS.length?FACTS:FALLBACK_FACTS;
-if(!facts.length){slot.innerHTML='';return;}
-slot.innerHTML='<div class="sec-head"><div><h2>Tahukah Kamu?</h2><div class="sub">Fakta menarik hari ini</div></div></div><div class="facts-rail" id="factsRail">'+facts.map(f=>{
-const meta=f.year?('Tahun '+f.year):'Fakta menarik';
-const img=f.thumb?`<div class="fact-thumb ph img" style="background-image:url('${String(f.thumb).replace(/'/g,'%27')}')"></div>`:'';
-const link=f.url?` data-url="${f.url}"`:'';
-return `<div class="fact-card"${link}>${img}<div class="fact-body"><span class="fact-kicker">${svg('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2V17h6v-.4c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>')} ${meta}</span><p>${esc(f.text)}</p></div></div>`;
-}).join('')+'</div>';
+const pool=FACTS.length?FACTS:FALLBACK_FACTS;
+if(!pool.length){slot.innerHTML='';return;}
+const show=pool.slice(0,factsShown);
+const cards=show.map((f,i)=>{const a=mkFactArticle(f,'Tahukah Kamu','fact',i);return railCard(a,'<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2V17h6v-.4c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>',(f.year?('Tahun '+f.year):'Fakta menarik'),f.text);}).join('');
+const rem=pool.length-factsShown;
+const more=rem>0?`<div class="fact-card" id="moreFacts"><div class="fact-body" style="display:flex;align-items:center;justify-content:center;min-height:74px"><span class="fact-kicker">${svg('<path d="M12 5v14"/><path d="M5 12h14"/>')} Muat ${Math.min(8,rem)} lagi</span></div></div>`:'';
+slot.innerHTML='<div class="sec-head"><div><h2>Tahukah Kamu?</h2><div class="sub">Fakta menarik dari Wikipedia</div></div></div><div class="facts-rail">'+cards+more+'</div>';
+const mf=$('#moreFacts');if(mf)mf.onclick=()=>{factsShown+=8;renderFacts();};
 }
 async function loadFacts(){
 try{const c=JSON.parse(localStorage.getItem(FACTS_KEY)||'null');if(c&&c.date===todayStr()&&c.facts&&c.facts.length){FACTS=c.facts;renderFacts();return;}}catch(e){}
 try{const f=await fetchFacts();if(f&&f.length){FACTS=f;try{localStorage.setItem(FACTS_KEY,JSON.stringify({date:todayStr(),facts:f}));}catch(e){}renderFacts();return;}}catch(e){}
 FACTS=[];renderFacts();
 }
-
-/* ============ EXTRA SOURCES: Research (arXiv + Crossref) & Art (Met + Art Institute) ============ */
-function hashStr(s){let h=0;s=String(s);for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;}return Math.abs(h);}
-const RESEARCH_SEEDS=['psychology','philosophy','neuroscience','learning','memory','cognition','artificial intelligence','well-being','creativity','behavioral economics','physics','biology','sociology','habits'];
-function researchQuery(){return RESEARCH_SEEDS[dayOffset()%RESEARCH_SEEDS.length];}
-function researchArticle(src,title,abstract,authors,url,date,venue){
-const ab=clean(abstract||'');const sents=sentences(ab);
-const author=authors&&authors.length?(authors.slice(0,2).join(', ')+(authors.length>2?' dkk.':'')):venue;
-const paras=ab?ab.split(/\n+/).map(s=>s.trim()).filter(Boolean):[];
-const body=(paras.length?paras:[ab||'Ringkasan tidak tersedia untuk makalah ini. Buka sumber untuk membaca selengkapnya.']).map(p=>'<p>'+esc(p)+'</p>').join('')+(url?('<p><a href="'+url+'" target="_blank" rel="noopener">Baca makalah lengkap →</a></p>'):'');
-return {id:'r_'+src+'_'+hashStr(title+url),cat:'research',catName:'Riset',title:title,author:author,role:venue+(date?(' · '+date):''),rt:estRead(ab)||5,bg:'linear-gradient(135deg,#3b4a6b,#232f4a)',image:'',excerpt:(clean(sents[0]||ab).slice(0,170))||('Makalah akademik dari '+venue+'.'),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[title]).map(clean),body:body,cites:[venue+'. '+(date||'')+'. '+(url||'')].filter(Boolean),url:url};
+async function loadNews(){
+try{const c=JSON.parse(localStorage.getItem(NEWS_KEY)||'null');if(c&&c.date===todayStr()&&c.items){NEWS=c.items;renderNews();return;}}catch(e){}
+try{const n=await fetchNews();NEWS=n||[];try{localStorage.setItem(NEWS_KEY,JSON.stringify({date:todayStr(),items:NEWS}));}catch(e){}}catch(e){NEWS=[];}
+renderNews();
 }
-async function fetchArxiv(q,start,limit){
-const url='https://export.arxiv.org/api/query?search_query='+encodeURIComponent('all:'+q)+'&start='+(start||0)+'&max_results='+(limit||8)+'&sortBy=relevance';
-const r=await fetch(url);if(!r.ok)throw new Error('arxiv');
-const xml=await r.text();const doc=new DOMParser().parseFromString(xml,'application/xml');
-const entries=Array.from(doc.getElementsByTagName('entry'));
-return entries.map(en=>{
-const g=t=>{const n=en.getElementsByTagName(t)[0];return n?clean(n.textContent):'';};
-const title=g('title');const summary=g('summary');
-const authors=Array.from(en.getElementsByTagName('author')).map(a=>{const n=a.getElementsByTagName('name')[0];return n?clean(n.textContent):'';}).filter(Boolean);
-const links=Array.from(en.getElementsByTagName('link'));const alt=links.find(l=>l.getAttribute('rel')==='alternate');
-const link=alt?alt.getAttribute('href'):g('id');
-return researchArticle('arxiv',title,summary,authors,link,g('published').slice(0,10),'arXiv');
-}).filter(a=>a.title);
-}
-async function fetchCrossref(q,offset,limit){
-const url='https://api.crossref.org/works?query='+encodeURIComponent(q)+'&rows='+(limit||8)+'&offset='+(offset||0)+'&select=title,abstract,author,URL,created,container-title';
-const r=await fetch(url);if(!r.ok)throw new Error('crossref');
-const j=await r.json();const items=(j.message&&j.message.items)||[];
-return items.map(it=>{
-const title=clean((it.title&&it.title[0])||'');if(!title)return null;
-let abs=clean((it.abstract||'').replace(/<[^>]+>/g,' '));
-const authors=(it.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' ')).filter(Boolean);
-const journal=(it['container-title']&&it['container-title'][0])||'Jurnal akademik';
-const date=(it.created&&it.created['date-time'])?it.created['date-time'].slice(0,10):'';
-return researchArticle('crossref',title,abs,authors,it.URL||'',date,journal);
-}).filter(Boolean);
-}
-async function fetchResearch(offset,limit){
-const q=researchQuery();
-const [ax,cr]=await Promise.all([fetchArxiv(q,offset||0,8).catch(()=>[]),fetchCrossref(q,offset||0,8).catch(()=>[])]);
-const out=[];const max=Math.max(ax.length,cr.length);
-for(let i=0;i<max;i++){if(ax[i])out.push(ax[i]);if(cr[i])out.push(cr[i]);}
-return out;
-}
-const ART_SEEDS=['impressionism','landscape','portrait','sculpture','modern art','nature','flowers','sea','mythology','abstract','japanese art','still life','architecture'];
-function artQuery(){return ART_SEEDS[dayOffset()%ART_SEEDS.length];}
-function artArticle(src,title,artist,date,medium,desc,img,url){
-title=clean(title||'Untitled');artist=clean(artist||'Seniman tak dikenal');
-const info=[clean(medium),clean(date)].filter(Boolean).join(' · ');
-const house=src==='met'?'The Metropolitan Museum of Art':'Art Institute of Chicago';
-const body='<p>'+esc((desc&&desc.length>2)?desc:(title+(artist?(' — '+artist):'')+'.'))+'</p>'+(info?('<p>'+esc(info)+'</p>'):'')+(url?('<p><a href="'+url+'" target="_blank" rel="noopener">Lihat di museum →</a></p>'):'');
-return {id:'a_'+src+'_'+hashStr(title+url),cat:'art',catName:'Seni',title:title,author:artist,role:house+(date?(' · '+clean(date)):''),rt:2,bg:'linear-gradient(135deg,#7a4b6b,#40263a)',image:img||'',excerpt:(info||('Karya seni oleh '+artist)).slice(0,170),takeaways:[title,artist!=='Seniman tak dikenal'?('Karya '+artist):('Koleksi '+house),info].filter(Boolean).slice(0,3),body:body,cites:[house+'. '+(url||'')],url:url};
-}
-async function fetchArtic(page,limit){
-const url='https://api.artic.edu/api/v1/artworks/search?q='+encodeURIComponent(artQuery())+'&fields=id,title,image_id,artist_title,date_display,medium_display,thumbnail&limit='+(limit||8)+'&page='+(page||1);
-const r=await fetch(url);if(!r.ok)throw new Error('artic');
-const j=await r.json();const data=j.data||[];const iiif=(j.config&&j.config.iiif_url)||'https://www.artic.edu/iiif/2';
-return data.filter(d=>d.image_id).map(d=>artArticle('artic',d.title,d.artist_title,d.date_display,d.medium_display,(d.thumbnail&&d.thumbnail.alt_text)||'',iiif+'/'+d.image_id+'/full/843,/0/default.jpg','https://www.artic.edu/artworks/'+d.id));
-}
-async function fetchMet(offset,limit){
-const s=await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q='+encodeURIComponent(artQuery()));
-if(!s.ok)throw new Error('met');const sj=await s.json();
-const ids=(sj.objectIDs||[]).slice(offset||0,(offset||0)+(limit||6));
-const objs=await Promise.all(ids.map(id=>fetch('https://collectionapi.metmuseum.org/public/collection/v1/objects/'+id).then(r=>r.ok?r.json():null).catch(()=>null)));
-return objs.filter(o=>o&&o.primaryImageSmall).map(o=>artArticle('met',o.title,o.artistDisplayName,o.objectDate,o.medium,'',o.primaryImageSmall,o.objectURL));
-}
-async function fetchArt(offset,limit){
-const page=Math.floor((offset||0)/(limit||12))+1;
-const [ar,me]=await Promise.all([fetchArtic(page,8).catch(()=>[]),fetchMet(offset||0,6).catch(()=>[])]);
-const out=[];const max=Math.max(ar.length,me.length);
-for(let i=0;i<max;i++){if(ar[i])out.push(ar[i]);if(me[i])out.push(me[i]);}
-return out;
+async function loadHistory(){
+try{const c=JSON.parse(localStorage.getItem(HISTORY_KEY)||'null');if(c&&c.date===todayStr()&&c.items&&c.items.length){HISTORY=c.items;renderHistory();return;}}catch(e){}
+try{const h=await fetchOnThisDay('selected');if(h&&h.length){HISTORY=h.slice(0,18);try{localStorage.setItem(HISTORY_KEY,JSON.stringify({date:todayStr(),items:HISTORY}));}catch(e){}}}catch(e){HISTORY=[];}
+renderHistory();
 }
 
 /* ============ INIT ============ */
@@ -1257,7 +1236,7 @@ feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,cont:null,catDone:false,don
 buildTopics(FALLBACK_TOPICS);
 renderChips();renderFeed();renderFacts();
 const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
-loadTopics();loadContent();loadFacts();
+loadTopics();loadContent();loadFacts();loadNews();loadHistory();
 </script>
 </body>
 </html>
