@@ -1035,7 +1035,6 @@ const saved=S.saved.includes(a.id), read=S.read.includes(a.id);
 $('#view-read').innerHTML=`
 <div class="reader-hero">
 ${coverPH(a)}<div class="grad"></div>
-<button class="reader-back" id="readerBack">${svg('<path d="M15 18 9 12l6-6"/>')}</button>
 </div>
 <div class="reader-body">
 <span class="reader-cat">${a.catName}</span>
@@ -1056,6 +1055,7 @@ ${a.cites.map((c,i)=>`<div class="cite"><span class="num">[${i+1}]</span><span>$
 </div>
 </div>
 <div class="reader-actions">
+<button class="btn-ghost" id="readerBack">${svg('<path d="M15 18 9 12l6-6"/>')}</button>
 <button class="btn-primary${read?' done':''}" id="markRead">${read?svg('<path d="M20 6 9 17l-5-5"/>')+' Completed':'Mark as Read'}</button>
 <button class="btn-ghost${saved?' saved':''}" id="readerSave">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}</button>
 </div>`;
@@ -1090,13 +1090,14 @@ save();refreshAll();
 let galleryTheme='pemandangan';
 const galleryCache={};
 const GALLERY_THEMES=[
-{id:'pemandangan',name:'Pemandangan',cat:'Gunung di Indonesia',search:'gunung di Indonesia'},
-{id:'alam',name:'Alam',cat:'Taman nasional di Indonesia',search:'taman nasional Indonesia'},
-{id:'candi',name:'Candi & Sejarah',cat:'Candi di Indonesia',search:'candi di Indonesia'},
-{id:'lukisan',name:'Lukisan',cat:'Lukisan',search:'lukisan terkenal'},
-{id:'satwa',name:'Satwa',cat:'Fauna Indonesia',search:'hewan endemik Indonesia'},
-{id:'budaya',name:'Budaya',cat:'Budaya Indonesia',search:'kebudayaan Indonesia'},
-{id:'dunia',name:'Situs Dunia',cat:'Situs Warisan Dunia di Indonesia',search:'situs warisan dunia UNESCO'}
+{id:'pemandangan',name:'Pemandangan',queries:['gunung di Indonesia','danau di Indonesia','pantai di Indonesia','air terjun di Indonesia','pemandangan alam']},
+{id:'alam',name:'Alam',queries:['taman nasional di Indonesia','hutan di Indonesia','flora Indonesia','bunga','pohon']},
+{id:'candi',name:'Candi & Sejarah',queries:['candi di Indonesia','situs sejarah di Indonesia','kerajaan di Indonesia','prasasti','peninggalan sejarah']},
+{id:'lukisan',name:'Lukisan',queries:['lukisan','pelukis','seni lukis','karya seni rupa','lukisan terkenal dunia']},
+{id:'satwa',name:'Satwa',queries:['mamalia','burung','reptil','hewan endemik Indonesia','ikan']},
+{id:'budaya',name:'Budaya',queries:['tarian tradisional Indonesia','pakaian adat Indonesia','rumah adat di Indonesia','alat musik tradisional Indonesia','upacara adat']},
+{id:'dunia',name:'Situs Dunia',queries:['situs warisan dunia UNESCO','keajaiban dunia','monumen terkenal dunia','bangunan terkenal dunia','kota bersejarah']},
+{id:'arsitektur',name:'Arsitektur',queries:['arsitektur','masjid terkenal','gereja terkenal','istana','jembatan terkenal']}
 ];
 function galleryCfg(){return GALLERY_THEMES.find(t=>t.id===galleryTheme)||GALLERY_THEMES[0];}
 function gallerySkeleton(){return [168,224,150,196,176,210].map(h=>`<div class="gal-skel" style="height:${h}px"></div>`).join('');}
@@ -1106,10 +1107,14 @@ const sub=esc((a.excerpt||'').slice(0,90));
 return `<figure class="gal-card" data-id="${a.id}"><img class="gal-img" src="${img}" alt="${esc(a.title)}" loading="lazy" onerror="var c=this.closest('.gal-card');if(c)c.remove()"><figcaption class="gal-cap"><span class="gal-tt">${esc(a.title)}</span>${sub?`<span class="gal-sub">${sub}</span>`:''}</figcaption></figure>`;
 }
 function renderGalleryChips(){
-const w=$('#galleryChips');if(!w)return;w.innerHTML='';
+const w=$('#galleryChips');if(!w)return;
+if(w.dataset.active===galleryTheme)return;
+w.innerHTML='';
 const sc=el('div','chips-scroll');
 GALLERY_THEMES.forEach(t=>{const b=el('button','chip'+(galleryTheme===t.id?' active':''));b.textContent=t.name;b.onclick=()=>{if(galleryTheme===t.id)return;galleryTheme=t.id;renderGallery();if(!galleryCache[t.id])loadGallery(true);$('#scroll').scrollTo({top:0});};sc.appendChild(b);});
 w.appendChild(sc);
+w.dataset.active=galleryTheme;
+const act=sc.querySelector('.chip.active');if(act)sc.scrollLeft=Math.max(0,act.offsetLeft-sc.clientWidth/2+act.offsetWidth/2);
 }
 function renderGallery(){
 renderGalleryChips();
@@ -1131,18 +1136,23 @@ markSaved();
 async function loadGallery(reset){
 const cfg=galleryCfg();
 let st=galleryCache[cfg.id];
-if(reset||!st){st={items:[],loading:false,done:false,cont:null,offset:0,catDone:false,searchDone:false};galleryCache[cfg.id]=st;}
+if(reset||!st){st={items:[],loading:false,done:false,qi:0,offset:0};galleryCache[cfg.id]=st;}
 if(st.loading||st.done)return;
 st.loading=true;renderGallery();
 try{
-const tasks=[];
-if(!st.catDone)tasks.push(fetchByCategory(cfg.cat,cfg.name,'var(--sage)',st.cont,20).then(r=>{st.cont=r.cont;if(!r.cont)st.catDone=true;return r.items;}).catch(()=>{st.catDone=true;return [];}));
-if(!st.searchDone)tasks.push(searchArticles(cfg.search,'var(--sage)',cfg.name,st.offset,20).then(s=>{st.offset+=20;if(s.length<20)st.searchDone=true;return s;}).catch(()=>{st.searchDone=true;return [];}));
-const results=(await Promise.all(tasks)).reduce((a,b)=>a.concat(b),[]);
+const target=st.items.length+12;
+let rounds=0;
+while(st.items.length<target&&st.qi<cfg.queries.length&&rounds<10){
+rounds++;
+const q=cfg.queries[st.qi];
+let arts=[];
+try{arts=await searchArticles(q,'var(--sage)',cfg.name,st.offset,40);}catch(e){arts=[];}
+if(arts.length<40){st.qi++;st.offset=0;}else{st.offset+=40;}
 const seen={};st.items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});
-results.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;st.items.push(a);}});
+arts.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;st.items.push(a);}});
+}
 regArticles(st.items);
-if(st.catDone&&st.searchDone)st.done=true;
+if(st.qi>=cfg.queries.length)st.done=true;
 }catch(e){st.done=true;}
 st.loading=false;renderGallery();
 }
