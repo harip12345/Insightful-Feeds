@@ -1097,17 +1097,17 @@ let galleryTheme='semua';
 const galleryCache={};
 const GALLERY_THEMES=[
 {id:'semua',name:'Semua',all:true},
-{id:'pemandangan',name:'Pemandangan',queries:['gunung di Indonesia','danau di Indonesia','pantai di Indonesia','air terjun di Indonesia','pemandangan alam']},
-{id:'alam',name:'Alam',queries:['taman nasional di Indonesia','hutan di Indonesia','flora Indonesia','bunga','pohon']},
-{id:'candi',name:'Candi & Sejarah',queries:['candi di Indonesia','situs sejarah di Indonesia','kerajaan di Indonesia','prasasti','peninggalan sejarah']},
-{id:'lukisan',name:'Lukisan',queries:['lukisan','pelukis','seni lukis','karya seni rupa','lukisan terkenal dunia']},
-{id:'satwa',name:'Satwa',queries:['mamalia','burung','reptil','hewan endemik Indonesia','ikan']},
-{id:'budaya',name:'Budaya',queries:['tarian tradisional Indonesia','pakaian adat Indonesia','rumah adat di Indonesia','alat musik tradisional Indonesia','upacara adat']},
-{id:'dunia',name:'Situs Dunia',queries:['situs warisan dunia UNESCO','keajaiban dunia','monumen terkenal dunia','bangunan terkenal dunia','kota bersejarah']},
-{id:'arsitektur',name:'Arsitektur',queries:['arsitektur','masjid terkenal','gereja terkenal','istana','jembatan terkenal']}
+{id:'pemandangan',name:'Pemandangan',queries:['gunung di Indonesia','danau di Indonesia','pantai di Indonesia','air terjun di Indonesia','pemandangan alam'],en:['mountain landscape','lake scenery','tropical beach','waterfall','national park']},
+{id:'alam',name:'Alam',queries:['taman nasional di Indonesia','hutan di Indonesia','flora Indonesia','bunga','pohon'],en:['forest landscape','wildflowers','trees','nature','plants']},
+{id:'candi',name:'Candi & Sejarah',queries:['candi di Indonesia','situs sejarah di Indonesia','kerajaan di Indonesia','prasasti','peninggalan sejarah'],en:['ancient temple','ancient ruins','archaeology','historic monument','antiquities']},
+{id:'lukisan',name:'Lukisan',queries:['lukisan','pelukis','seni lukis','karya seni rupa','lukisan terkenal dunia'],en:['painting','portrait painting','landscape painting','famous artwork','impressionism']},
+{id:'satwa',name:'Satwa',queries:['mamalia','burung','reptil','hewan endemik Indonesia','ikan'],en:['mammal','bird','reptile','fish','butterfly']},
+{id:'budaya',name:'Budaya',queries:['tarian tradisional Indonesia','pakaian adat Indonesia','rumah adat di Indonesia','alat musik tradisional Indonesia','upacara adat'],en:['traditional dance','folk costume','traditional house','musical instrument','ceremony']},
+{id:'dunia',name:'Situs Dunia',queries:['situs warisan dunia UNESCO','keajaiban dunia','monumen terkenal dunia','bangunan terkenal dunia','kota bersejarah'],en:['world heritage site','ancient wonder','famous monument','historic architecture','castle']},
+{id:'arsitektur',name:'Arsitektur',queries:['arsitektur','masjid terkenal','gereja terkenal','istana','jembatan terkenal'],en:['architecture','mosque','cathedral','palace','famous bridge']}
 ];
 function galleryCfg(){return GALLERY_THEMES.find(t=>t.id===galleryTheme)||GALLERY_THEMES[0];}
-function galleryQueries(cfg){if(!cfg.all)return cfg.queries;const themes=GALLERY_THEMES.filter(t=>!t.all);const out=[];let more=true,i=0;while(more){more=false;themes.forEach(t=>{if(t.queries&&t.queries[i]){out.push(t.queries[i]);more=true;}});i++;}return out;}
+function galleryQueries(cfg,lang){const pick=t=>((lang==='en'?(t.en||t.queries):t.queries)||[]);if(!cfg.all)return pick(cfg);const themes=GALLERY_THEMES.filter(t=>!t.all);const out=[];let more=true,i=0;while(more){more=false;themes.forEach(t=>{const arr=pick(t);if(arr[i]){out.push(arr[i]);more=true;}});i++;}return out;}
 function gallerySkeleton(){return [168,224,150,196,176,210].map(h=>`<div class="gal-skel" style="height:${h}px"></div>`).join('');}
 function galleryCardHTML(a){
 const img=String(a.image).replace(/'/g,'%27').replace(/"/g,'%22');
@@ -1147,27 +1147,84 @@ const sc=$('#scroll');if(!sc)return;
 const st=galleryCache[galleryTheme];if(!st||st.loading||st.done)return;
 if(sc.scrollHeight-sc.clientHeight<260)loadGallery(false);
 }
+/* ---- Sumber galeri tambahan (fallback) ---- */
+function extArticle(o){
+const ex=clean(o.desc||'');
+const tk=ex?sentences(ex).slice(0,3).map(clean):[];
+if(!tk.length)tk.push(clean(ex||o.title||'').slice(0,120)||'Gambar dari '+ (o.author||'sumber terbuka')+'.');
+return {id:o.id,cat:o.cat||'ext',catName:o.catName||'Galeri',title:o.title||'Tanpa judul',wikiTitle:o.title||'',kind:'image',full:true,author:o.author||'Sumber',role:o.role||'Sumber gambar',rt:Math.max(2,estRead(ex)),bg:'var(--sage)',image:o.image,excerpt:(ex||o.title||'').slice(0,170),takeaways:tk,body:ex?('<p>'+esc(ex)+'</p>'):('<p>'+esc(o.title||'')+'</p>'),cites:[o.cite||o.url||o.author||'']};
+}
+async function fetchCommons(query,catName,limit){
+const url='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit='+(limit||30)+'&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=800';
+const r=await fetch(url);if(!r.ok)throw new Error('commons '+r.status);
+const j=await r.json();const pages=Object.values((j.query&&j.query.pages)||{});
+const out=[];
+pages.forEach(p=>{const ii=p.imageinfo&&p.imageinfo[0];if(!ii)return;if(!/\.(jpe?g|png)$/i.test(ii.url||''))return;const img=ii.thumburl||ii.url;if(!img)return;const meta=ii.extmetadata||{};let desc=((meta.ImageDescription&&meta.ImageDescription.value)||'').replace(/<[^>]+>/g,' ');const title=String(p.title).replace(/^File:/,'').replace(/\.[a-z0-9]+$/i,'').replace(/_/g,' ');out.push(extArticle({id:'cm_'+p.pageid,catName:catName,title:title,image:img,desc:clean(desc),author:'Wikimedia Commons',role:'Repositori media bebas',url:ii.descriptionurl,cite:title+'. Wikimedia Commons. '+(ii.descriptionurl||'')}));});
+return out;
+}
+async function fetchMet(query,catName,limit){
+const s=await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&q='+encodeURIComponent(query));
+if(!s.ok)throw new Error('met '+s.status);
+const sj=await s.json();const ids=(sj.objectIDs||[]).slice(0,limit||8);
+const objs=await Promise.all(ids.map(id=>fetch('https://collectionapi.metmuseum.org/public/collection/v1/objects/'+id).then(r=>r.ok?r.json():null).catch(()=>null)));
+const out=[];
+objs.forEach(d=>{if(!d)return;const img=d.primaryImageSmall||d.primaryImage;if(!img)return;const parts=[d.objectName,d.culture,d.period,d.artistDisplayName,d.objectDate,d.medium].filter(Boolean);out.push(extArticle({id:'met_'+d.objectID,catName:catName,title:d.title||d.objectName||'Karya Seni',image:img,desc:parts.join(', '),author:'The Met',role:d.department||'Metropolitan Museum of Art',url:d.objectURL,cite:(d.title||'Object')+'. The Metropolitan Museum of Art. '+(d.objectURL||'')}));});
+return out;
+}
+async function fetchAIC(query,catName,limit){
+const url='https://api.artic.edu/api/v1/artworks/search?q='+encodeURIComponent(query)+'&limit='+(limit||15)+'&fields=id,title,image_id,artist_display,date_display,medium_display,thumbnail';
+const r=await fetch(url);if(!r.ok)throw new Error('aic '+r.status);
+const j=await r.json();const data=j.data||[];
+const out=[];
+data.forEach(d=>{if(!d.image_id)return;const img='https://www.artic.edu/iiif/2/'+d.image_id+'/full/843,/0/default.jpg';const alt=(d.thumbnail&&d.thumbnail.alt_text)||'';const desc=[d.artist_display,d.date_display,d.medium_display].filter(Boolean).join(' \u00b7 ')||alt;out.push(extArticle({id:'aic_'+d.id,catName:catName,title:d.title||'Karya Seni',image:img,desc:clean(desc),author:'Art Institute of Chicago',role:'Museum seni',url:'https://www.artic.edu/artworks/'+d.id,cite:(d.title||'Artwork')+'. Art Institute of Chicago.'}));});
+return out;
+}
+async function fetchINat(query,catName,limit){
+const url='https://api.inaturalist.org/v1/taxa?q='+encodeURIComponent(query)+'&per_page='+(limit||25)+'&locale=id';
+const r=await fetch(url);if(!r.ok)throw new Error('inat '+r.status);
+const j=await r.json();const res=j.results||[];
+const out=[];
+res.forEach(t=>{const ph=t.default_photo;if(!ph||!ph.medium_url)return;const name=t.preferred_common_name||t.name;let desc=((t.wikipedia_summary||'')).replace(/<[^>]+>/g,' ');if(!desc)desc=(t.name&&t.name!==name?('Nama ilmiah: '+t.name+'. '):'')+'Takson: '+(t.rank||'spesies')+'.';out.push(extArticle({id:'inat_'+t.id,catName:catName,title:name,image:ph.medium_url,desc:clean(desc),author:'iNaturalist',role:'Basis data biodiversitas',url:'https://www.inaturalist.org/taxa/'+t.id,cite:name+'. iNaturalist.'}));});
+return out;
+}
+async function fetchNASA(query,catName,limit){
+const url='https://images-api.nasa.gov/search?media_type=image&q='+encodeURIComponent(query);
+const r=await fetch(url);if(!r.ok)throw new Error('nasa '+r.status);
+const j=await r.json();const items=((j.collection&&j.collection.items)||[]).slice(0,limit||25);
+const out=[];
+items.forEach(it=>{const d=(it.data&&it.data[0])||{};const link=(it.links&&it.links[0]&&it.links[0].href)||'';if(!link)return;out.push(extArticle({id:'nasa_'+(d.nasa_id||(''+Math.random()).slice(2)),catName:catName,title:d.title||'NASA',image:link,desc:clean(d.description||d.title||''),author:'NASA',role:'NASA Image Library',url:'https://images.nasa.gov/',cite:(d.title||'NASA image')+'. NASA Image and Video Library.'}));});
+return out;
+}
+const GALLERY_SOURCES=[
+{key:'wiki',lang:'id',paged:true,fetch:(q,name,off)=>searchArticles(q,'var(--sage)',name,off||0,40)},
+{key:'commons',lang:'id',fetch:(q,name)=>fetchCommons(q,name,30)},
+{key:'museum',lang:'en',fetch:(q,name)=>Promise.all([fetchMet(q,name,8).catch(()=>[]),fetchAIC(q,name,15).catch(()=>[])]).then(a=>a[0].concat(a[1]))},
+{key:'inat',lang:'en',fetch:(q,name)=>fetchINat(q,name,25)},
+{key:'nasa',lang:'en',fetch:(q,name)=>fetchNASA(q,name,25)}
+];
 async function loadGallery(reset){
 const cfg=galleryCfg();
-const queries=galleryQueries(cfg);
 let st=galleryCache[cfg.id];
-if(reset||!st){st={items:[],loading:false,done:false,qi:0,offset:0};galleryCache[cfg.id]=st;}
+if(reset||!st){st={items:[],loading:false,done:false,srcIdx:0,qi:0,offset:0};galleryCache[cfg.id]=st;}
 if(st.loading||st.done)return;
 st.loading=true;renderGallery();
 try{
 const target=st.items.length+12;
 let rounds=0;
-while(st.items.length<target&&st.qi<queries.length&&rounds<10){
+while(st.items.length<target&&st.srcIdx<GALLERY_SOURCES.length&&rounds<16){
 rounds++;
-const q=queries[st.qi];
+const src=GALLERY_SOURCES[st.srcIdx];
+const qs=galleryQueries(cfg,src.lang);
+if(!qs.length||st.qi>=qs.length){st.srcIdx++;st.qi=0;st.offset=0;continue;}
+const q=qs[st.qi];
 let arts=[];
-try{arts=await searchArticles(q,'var(--sage)',cfg.name,st.offset,40);}catch(e){arts=[];}
-if(arts.length<40){st.qi++;st.offset=0;}else{st.offset+=40;}
+try{arts=await src.fetch(q,cfg.name,st.offset);}catch(e){arts=[];}
+if(src.paged){if(arts.length>=40){st.offset+=40;}else{st.qi++;st.offset=0;}}else{st.qi++;st.offset=0;}
 const seen={};st.items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});
 arts.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;st.items.push(a);}});
 }
 regArticles(st.items);
-if(st.qi>=queries.length)st.done=true;
+if(st.srcIdx>=GALLERY_SOURCES.length)st.done=true;
 }catch(e){st.done=true;}
 st.loading=false;renderGallery();
 }
