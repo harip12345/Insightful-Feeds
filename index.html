@@ -613,7 +613,7 @@ const CURATED_TOPICS=[
 {q:'Arsitektur',label:'🏰 Arsitektur'},
 {q:'Kuliner',label:'🍜 Kuliner'},
 {q:'Peradaban kuno',label:'🗿 Peradaban Kuno'},
-{q:'Penjelajahan',label:'🧭 Penjelajahan'},
+{q:'Penjelajahan',label:'     Penjelajahan'},
 {q:'Samudra',label:'🌊 Samudra'},
 {q:'Ekonomi',label:'📈 Ekonomi'},
 {q:'Bahasa',label:'🗣️ Bahasa'},
@@ -801,6 +801,49 @@ const items=pages.filter(p=>p.extract&&clean(p.extract).length>140&&!/(dapat men
 const c2=(j.continue&&j.continue.gcmcontinue)||null;
 return {items:items,cont:c2};
 }
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+async function fetchSubcats(cat){
+try{
+const url=WIKI+'?action=query&format=json&origin=*&list=categorymembers&cmtitle='+encodeURIComponent('Kategori:'+cat)+'&cmtype=subcat&cmlimit=200';
+const r=await fetch(url);if(!r.ok)return [];
+const j=await r.json();
+return ((j.query&&j.query.categorymembers)||[]).map(m=>String(m.title).replace(/^Kategori:/,'').trim()).filter(x=>x&&!/\d{3,}/.test(x)&&!/^(Rintisan|Templat|Wikipedia|Berkas|Halaman|Kategori|Portal|Artikel|Semua|Pemeliharaan)/i.test(x)&&!/(pengguna|wikipedia|rintisan|stub|tanpa kategori|tak berkategori|perlu |kategori tersembunyi)/i.test(x));
+}catch(e){return [];}
+}
+async function fetchCatPages(cat,cont,limit){
+let url=WIKI+'?action=query&format=json&origin=*&generator=categorymembers&gcmtitle='+encodeURIComponent('Kategori:'+cat)+'&gcmnamespace=0&gcmtype=page&gcmlimit='+(limit||18)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=2800&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
+if(cont)url+='&gcmcontinue='+encodeURIComponent(cont);
+const r=await fetch(url);if(!r.ok)throw new Error('cat '+r.status);
+const j=await r.json();
+const pages=Object.values((j.query&&j.query.pages)||{}).filter(p=>p.extract&&clean(p.extract).length>160&&!/(dapat mengacu pada|dapat merujuk|disambigu)/i.test(p.extract)&&!/^(Daftar |Garis besar |Indeks )/i.test(p.title||''));
+return {pages:pages,cont:(j.continue&&j.continue.gcmcontinue)||null};
+}
+async function loadTopicBatch(t,st,want){
+if(!st.subcats){st.subcats=shuffle(await fetchSubcats(t.q));st.subIdx=0;st.subCont=null;st.topDone=false;st.topCont=null;}
+const out=[];const seen={};
+const push=p=>{const k=(p.title||'').toLowerCase();if(k&&!seen[k]){seen[k]=1;out.push(p);}};
+if(!st.topDone){try{const res=await fetchCatPages(t.q,st.topCont,18);st.topCont=res.cont;if(!res.cont)st.topDone=true;res.pages.forEach(push);}catch(e){st.topDone=true;}}
+let guard=0;
+while(out.length<(want||10)&&st.subIdx<st.subcats.length&&guard<5){
+guard++;
+const sub=st.subcats[st.subIdx];
+try{const res=await fetchCatPages(sub,st.subCont,18);res.pages.forEach(push);if(res.cont){st.subCont=res.cont;}else{st.subIdx++;st.subCont=null;}}
+catch(e){st.subIdx++;st.subCont=null;}
+}
+const done=st.topDone&&st.subIdx>=st.subcats.length;
+return {items:shuffle(out).map(p=>toArticle(p,slug(t.q),t.label||t.name,t.bg)),done:done};
+}
+async function fetchTopicSample(t,limit){
+let pages=[];const seen={};
+try{
+const subs=shuffle(await fetchSubcats(t.q));
+const cats=[t.q].concat(subs.slice(0,3));
+const results=await Promise.allSettled(cats.map(c=>fetchCatPages(c,null,10)));
+results.forEach(r=>{if(r.status==='fulfilled')r.value.pages.forEach(p=>{const k=(p.title||'').toLowerCase();if(k&&!seen[k]){seen[k]=1;pages.push(p);}});});
+}catch(e){}
+if(pages.length<3){try{return (await searchArticles(t.q,t.bg,t.label||t.name,0,limit||8)).slice(0,limit||8);}catch(e){return [];}}
+return shuffle(pages).slice(0,limit||8).map(p=>toArticle(p,slug(t.q),t.label||t.name,t.bg));
+}
 async function loadMore(reset){
 const cat=activeCat;
 let st=feedCache[cat];
@@ -812,15 +855,15 @@ let batch=[];
 if(cat==='all'){
 const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,label:n,bg:colorFor(i)}));
 const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
-batch=await searchArticles(t.q,t.bg,t.label||t.name,0,12);
+batch=await fetchTopicSample(t,12);
 }else if(cat==='research'){
 batch=await fetchResearch(st.offset,12);
 }else if(cat==='art'){
 batch=await fetchArt(st.offset,12);
 }else{
 const t=resolveCat(cat)||{q:cat,name:cat,label:cat,bg:'var(--sage)'};
-if(!st.catDone){try{const res=await fetchByCategory(t.q,t.label||t.name,t.bg,st.cont,20);batch=res.items;st.cont=res.cont;if(!res.cont)st.catDone=true;}catch(e){st.catDone=true;}}
-if(batch.length<8){const s=await searchArticles(t.q,t.bg,t.label||t.name,st.offset||0,16);st.offset=(st.offset||0)+16;batch=batch.concat(s);}
+if(!st.catDone){try{const res=await loadTopicBatch(t,st,10);batch=res.items;if(res.done)st.catDone=true;}catch(e){st.catDone=true;}}
+if(!batch.length&&!st.items.length&&!st.searchFb){st.searchFb=true;try{batch=await searchArticles(t.q,t.bg,t.label||t.name,0,16);}catch(e){}st.catDone=true;}
 }
 const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
 const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
@@ -1034,7 +1077,7 @@ science:['ilmu saraf','tidur','evolusi','fisika','genetika','kosmologi','otak ma
 wellbeing:['kebahagiaan','meditasi','kesehatan mental','kesadaran penuh','optimisme','ketahanan mental','kesejahteraan'],
 creativity:['kreativitas','inovasi','imajinasi','seni','desain','pemecahan masalah','musik']
 };
-const CONTENT_KEY='insight_content_v4';
+const CONTENT_KEY='insight_content_v5';
 const WIKI='https://id.wikipedia.org/w/api.php';
 let DAILY_QUOTE=null;
 function todayStr(){return new Date().toISOString().slice(0,10);}
@@ -1063,7 +1106,7 @@ try{
 const cached=JSON.parse(localStorage.getItem(CONTENT_KEY)||'null');
 if(!force&&cached&&cached.date===todayStr()&&cached.articles&&cached.articles.length>=8){ARTICLES=cached.articles;DAILY_QUOTE=cached.quote||null;onContentReady();return;}
 const picks=(TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({q:n,name:n,label:n,bg:colorFor(i)}))).slice(0,8);
-const results=await Promise.allSettled(picks.map(t=>searchArticles(t.q,t.bg,t.label||t.name||t.q,0,8)));
+const results=await Promise.allSettled(picks.map(t=>fetchTopicSample(t,8)));
 let live=[];results.forEach(r=>{if(r.status==='fulfilled')live=live.concat(r.value);});
 const quote=await fetchQuote();
 if(live.length>=8){live=interleave(live);ARTICLES=live;DAILY_QUOTE=quote;try{localStorage.setItem(CONTENT_KEY,JSON.stringify({date:todayStr(),articles:live,quote}));}catch(e){}onContentReady(true);}
