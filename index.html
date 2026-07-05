@@ -588,14 +588,41 @@ function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').repla
 const CAT_Q={psychology:'Psikologi',philosophy:'Filsafat',productivity:'Produktivitas',science:'Sains',wellbeing:'Kesejahteraan',creativity:'Kreativitas'};
 const FALLBACK_TOPICS=['Psikologi','Filsafat','Sains','Teknologi','Sejarah','Seni','Musik','Sastra','Ekonomi','Politik','Kesehatan','Biologi','Fisika','Matematika','Astronomi','Geografi','Budaya','Olahraga','Agama','Bahasa','Lingkungan','Komputer','Kedokteran','Pendidikan','Film','Arsitektur','Kuliner','Antariksa'];
 let TOPICS=[];
+const CURATED_TOPICS=[
+{q:'Astronomi',label:'🌌 Astronomi'},
+{q:'Luar angkasa',label:'🚀 Luar Angkasa'},
+{q:'Mitologi',label:'🐉 Mitologi'},
+{q:'Psikologi',label:'🧠 Psikologi'},
+{q:'Filsafat',label:'📜 Filsafat'},
+{q:'Sejarah',label:'🏛️ Sejarah'},
+{q:'Fisika',label:'⚛️ Fisika'},
+{q:'Biologi',label:'🧬 Biologi'},
+{q:'Hewan',label:'🦉 Hewan'},
+{q:'Teknologi',label:'💡 Teknologi'},
+{q:'Kecerdasan buatan',label:'🤖 Kecerdasan Buatan'},
+{q:'Seni',label:'🎨 Seni'},
+{q:'Musik',label:'🎵 Musik'},
+{q:'Film',label:'🎬 Film'},
+{q:'Arsitektur',label:'🏰 Arsitektur'},
+{q:'Kuliner',label:'🍜 Kuliner'},
+{q:'Peradaban kuno',label:'🗿 Peradaban Kuno'},
+{q:'Penjelajahan',label:'🧭 Penjelajahan'},
+{q:'Samudra',label:'🌊 Samudra'},
+{q:'Ekonomi',label:'📈 Ekonomi'},
+{q:'Bahasa',label:'🗣️ Bahasa'},
+{q:'Agama',label:'🕊️ Agama'},
+{q:'Olahraga',label:'⚽ Olahraga'},
+{q:'Matematika',label:'🔢 Matematika'}
+];
 function buildTopics(names){
-const cleanNames=[];const seen=new Set();
-(names||[]).forEach(n=>{n=String(n).replace(/^Kategori:/,'').trim();const k=n.toLowerCase();if(n&&n.length<=22&&!/[0-9:]/.test(n)&&!seen.has(k)){seen.add(k);cleanNames.push(n);}});
-let base=cleanNames.length>=8?cleanNames:FALLBACK_TOPICS.slice();
-base=base.slice(0,26);
-const off=base.length?dayOffset()%base.length:0;
-base=base.slice(off).concat(base.slice(0,off));
-TOPICS=base.map((n,i)=>({id:slug(n),name:n,q:n,bg:colorFor(i)}));
+let cur=CURATED_TOPICS.slice();
+const off=cur.length?dayOffset()%cur.length:0;
+cur=cur.slice(off).concat(cur.slice(0,off));
+const seen=new Set(cur.map(t=>t.q.toLowerCase()));
+const extra=[];
+(names||[]).forEach(n=>{n=String(n).replace(/^Kategori:/,'').trim();const k=n.toLowerCase();if(n&&n.length<=22&&!/[0-9:]/.test(n)&&!seen.has(k)){seen.add(k);extra.push({q:n,label:n});}});
+const base=cur.concat(extra.slice(0,12));
+TOPICS=base.map((t,i)=>({id:slug(t.q),name:t.q,q:t.q,label:t.label||t.q,bg:colorFor(i)}));
 }
 function resolveCat(id){const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
 
@@ -605,7 +632,7 @@ const wrap=$('#feedChips');if(!wrap)return;wrap.innerHTML='';
 const all=[{id:'all',name:'Untukmu'},{id:'research',name:'🔬 Riset'},{id:'art',name:'🎨 Galeri Seni'}].concat(TOPICS);
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
-b.textContent=c.name;
+b.textContent=c.label||c.name;
 b.onclick=()=>{activeCat=c.id;renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 wrap.appendChild(b);
 });
@@ -667,11 +694,11 @@ const img=(p.thumbnail&&p.thumbnail.source)||(p.original&&p.original.source)||''
 return {id:'w_'+catId+'_'+p.pageid,cat:catId,catName:catName||catId,title:p.title,author:'Wikipedia',role:'Ensiklopedia bebas',rt:estRead(ex),bg:bg||'var(--sage)',image:img,excerpt:clean(sents[0]||ex).slice(0,170),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[clean(ex).slice(0,120)]).map(clean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. '+(p.canonicalurl||('https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.title).replace(/ /g,'_'))))]};
 }
 async function searchArticles(query,bg,name,offset,limit){
-const url=WIKI+'?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit='+(limit||8)+'&gsroffset='+(offset||0)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=3200&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
+const url=WIKI+'?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit='+(limit||12)+'&gsroffset='+(offset||0)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=3200&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
 const r=await fetch(url);if(!r.ok)throw new Error('wiki '+r.status);
 const j=await r.json();const pages=Object.values((j.query&&j.query.pages)||{});
 pages.sort((a,b)=>(a.index||0)-(b.index||0));
-return pages.filter(p=>p.extract&&clean(p.extract).length>200&&!/(dapat mengacu pada|dapat merujuk|disambigu)/i.test(p.extract)).map(p=>toArticle(p,slug(name||query),name||query,bg));
+return pages.filter(p=>p.extract&&clean(p.extract).length>140&&!/(dapat mengacu pada|dapat merujuk|disambigu)/i.test(p.extract)).map(p=>toArticle(p,slug(name||query),name||query,bg));
 }
 
 /* ============ FEED (with pagination) ============ */
@@ -704,33 +731,44 @@ else{list.innerHTML=(items.length?items:ARTICLES).map(cardFullHTML).join('');}
 }
 renderMoreBtn();markSaved();
 }
+async function fetchByCategory(q,label,bg,cont,limit){
+let url=WIKI+'?action=query&format=json&origin=*&generator=categorymembers&gcmtitle='+encodeURIComponent('Kategori:'+q)+'&gcmnamespace=0&gcmtype=page&gcmlimit='+(limit||20)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=2600&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
+if(cont)url+='&gcmcontinue='+encodeURIComponent(cont);
+const r=await fetch(url);if(!r.ok)throw new Error('cat '+r.status);
+const j=await r.json();
+const pages=Object.values((j.query&&j.query.pages)||{});
+pages.sort((a,b)=>(a.index||0)-(b.index||0));
+const items=pages.filter(p=>p.extract&&clean(p.extract).length>140&&!/(dapat mengacu pada|dapat merujuk|disambigu)/i.test(p.extract)&&!/^Daftar /i.test(p.title||'')).map(p=>toArticle(p,slug(q),label||q,bg));
+const c2=(j.continue&&j.continue.gcmcontinue)||null;
+return {items:items,cont:c2};
+}
 async function loadMore(reset){
 const cat=activeCat;
 let st=feedCache[cat];
-if(reset||!st){st={items:[],offset:0,rot:0,done:false,loading:false};feedCache[cat]=st;}
+if(reset||!st){st={items:[],offset:0,rot:0,cont:null,catDone:false,done:false,loading:false};feedCache[cat]=st;}
 if(st.loading||st.done)return;
 st.loading=true;renderMoreBtn();
 try{
 let batch=[];
 if(cat==='all'){
-const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,bg:colorFor(i)}));
+const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,label:n,bg:colorFor(i)}));
 const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
-batch=await searchArticles(t.q,t.bg,t.name,0,10);
+batch=await searchArticles(t.q,t.bg,t.label||t.name,0,12);
 }else if(cat==='research'){
 batch=await fetchResearch(st.offset,12);
 }else if(cat==='art'){
 batch=await fetchArt(st.offset,12);
 }else{
-const t=resolveCat(cat)||{q:cat,name:cat,bg:'var(--sage)'};
-batch=await searchArticles(t.q,t.bg,t.name,st.offset,12);
+const t=resolveCat(cat)||{q:cat,name:cat,label:cat,bg:'var(--sage)'};
+if(!st.catDone){try{const res=await fetchByCategory(t.q,t.label||t.name,t.bg,st.cont,20);batch=res.items;st.cont=res.cont;if(!res.cont)st.catDone=true;}catch(e){st.catDone=true;}}
+if(batch.length<8){const s=await searchArticles(t.q,t.bg,t.label||t.name,st.offset||0,16);st.offset=(st.offset||0)+16;batch=batch.concat(s);}
 }
 const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
 const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
 st.items=st.items.concat(fresh);
-st.offset+=12;
-if(cat!=='all'&&cat!=='research'&&cat!=='art'&&(batch.length<12||fresh.length===0))st.done=true;
-if((cat==='research'||cat==='art')&&(batch.length===0||fresh.length===0))st.done=true;
-if(cat==='all'&&st.rot>=(TOPICS.length||8)*2)st.done=true;
+if(cat==='all'){st.offset+=12;if(st.rot>=(TOPICS.length||8)*2)st.done=true;}
+else if(cat==='research'||cat==='art'){st.offset+=12;if(batch.length===0||fresh.length===0)st.done=true;}
+else{if(st.catDone&&fresh.length===0)st.done=true;}
 }catch(e){
 if(!st.items.length&&cat==='all')st.items=ARTICLES.slice();
 st.done=true;
@@ -748,7 +786,7 @@ const list=TOPICS.length?TOPICS:CATS.map(c=>({id:c.id,name:c.name,bg:c.bg}));
 g.innerHTML=list.map((c,i)=>`<div class="cat-tile" data-cat="${c.id}" style="background:${c.bg||'var(--sage)'}">
 <div class="grad"></div>
 <div class="ic">${svg(topicIcon(i))}</div>
-<div class="nm">${c.name}</div>
+<div class="nm">${c.label||c.name}</div>
 <div class="ct">Jelajahi insight</div>
 </div>`).join('');
 const si=$('#searchInput');
@@ -920,7 +958,7 @@ science:['ilmu saraf','tidur','evolusi','fisika','genetika','kosmologi','otak ma
 wellbeing:['kebahagiaan','meditasi','kesehatan mental','kesadaran penuh','optimisme','ketahanan mental','kesejahteraan'],
 creativity:['kreativitas','inovasi','imajinasi','seni','desain','pemecahan masalah','musik']
 };
-const CONTENT_KEY='insight_content_v3';
+const CONTENT_KEY='insight_content_v4';
 const WIKI='https://id.wikipedia.org/w/api.php';
 let DAILY_QUOTE=null;
 function todayStr(){return new Date().toISOString().slice(0,10);}
@@ -947,11 +985,12 @@ if(updated)toast('Konten insight diperbarui \u2728');
 async function loadContent(force){
 try{
 const cached=JSON.parse(localStorage.getItem(CONTENT_KEY)||'null');
-if(!force&&cached&&cached.date===todayStr()&&cached.articles&&cached.articles.length>=6){ARTICLES=cached.articles;DAILY_QUOTE=cached.quote||null;onContentReady();return;}
-const results=await Promise.allSettled(CATS.map(fetchCategory));
+if(!force&&cached&&cached.date===todayStr()&&cached.articles&&cached.articles.length>=8){ARTICLES=cached.articles;DAILY_QUOTE=cached.quote||null;onContentReady();return;}
+const picks=(TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({q:n,name:n,label:n,bg:colorFor(i)}))).slice(0,8);
+const results=await Promise.allSettled(picks.map(t=>searchArticles(t.q,t.bg,t.label||t.name||t.q,0,8)));
 let live=[];results.forEach(r=>{if(r.status==='fulfilled')live=live.concat(r.value);});
 const quote=await fetchQuote();
-if(live.length>=6){live=interleave(live);ARTICLES=live;DAILY_QUOTE=quote;try{localStorage.setItem(CONTENT_KEY,JSON.stringify({date:todayStr(),articles:live,quote}));}catch(e){}onContentReady(true);}
+if(live.length>=8){live=interleave(live);ARTICLES=live;DAILY_QUOTE=quote;try{localStorage.setItem(CONTENT_KEY,JSON.stringify({date:todayStr(),articles:live,quote}));}catch(e){}onContentReady(true);}
 else{DAILY_QUOTE=quote;onContentReady();}
 }catch(e){onContentReady();}
 }
