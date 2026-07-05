@@ -60,7 +60,6 @@ position:sticky;top:0;z-index:40;
 background:linear-gradient(180deg,rgba(251,249,248,.97),rgba(251,249,248,.80));
 backdrop-filter:saturate(180%) blur(18px);
 -webkit-backdrop-filter:saturate(180%) blur(18px);
-border-bottom:1px solid var(--border);
 padding:12px 18px;
 display:flex;align-items:center;justify-content:space-between;gap:12px;
 }
@@ -102,7 +101,7 @@ box-shadow:0 5px 13px rgba(45,79,61,.30),inset 0 1px 0 rgba(255,255,255,.22);
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 /* ---------- Category chips ---------- */
-.chips{display:flex;gap:9px;overflow-x:auto;padding:16px 0 6px 20px;scrollbar-width:none;scroll-padding-left:20px}
+.chips{position:sticky;top:0;z-index:30;background:var(--parchment);display:flex;align-items:center;gap:9px;overflow-x:auto;padding:16px 0 12px 20px;scrollbar-width:none;scroll-padding-left:20px;border-bottom:1px solid var(--border)}
 .chips::after{content:"";flex:0 0 20px;align-self:stretch}
 .chips::-webkit-scrollbar{display:none}
 .subchips{display:flex;gap:7px;overflow-x:auto;padding:0 20px 10px;scrollbar-width:none}
@@ -118,6 +117,9 @@ transition:.18s;white-space:nowrap;
 }
 .chip.active{background:var(--sage);color:#fff;border-color:var(--sage)}
 .chip:active{transform:scale(.95)}
+.chip.topic-selected{display:inline-flex;align-items:center;gap:5px;padding-left:12px}
+.chip .chip-back{width:16px;height:16px;margin-left:-2px}
+.chip-gap{flex:0 0 1px;align-self:center;width:1px;height:22px;background:var(--border);margin:0 9px}
 
 /* ---------- Section header ---------- */
 .sec-head{display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 12px}
@@ -249,7 +251,8 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .btn-ghost.saved{background:var(--sage-tint);border-color:var(--sage-300)}
 
 /* ---------- Discover ---------- */
-.searchbar{margin:16px 20px 8px;position:relative}
+.searchbar{position:sticky;top:0;z-index:30;background:var(--parchment);padding:14px 20px 10px}
+.searchbar-in{position:relative}
 .searchbar svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--faint)}
 .searchbar input{width:100%;height:48px;border-radius:14px;border:1px solid var(--border);background:var(--paper);padding:0 16px 0 44px;font-size:15px;font-family:var(--sans);color:var(--ink);outline:none;transition:.18s}
 .searchbar input:focus{border-color:var(--sage-300);box-shadow:0 0 0 3px var(--sage-tint)}
@@ -325,6 +328,20 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 .facts-rail::-webkit-scrollbar{display:none}
 .fact-card{scroll-snap-align:start;flex-shrink:0;width:250px;background:var(--paper);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:.18s;display:flex;flex-direction:column}
 .fact-card:active{transform:scale(.98)}
+.hub{margin-top:2px}
+.hub-head{position:relative;padding:22px 20px 12px}
+.hub-title{display:inline-flex;align-items:center;background:none;border:none;padding:0;margin:0;cursor:pointer;text-align:left}
+.hub-tt{display:flex;flex-direction:column}
+.hub-h2{font-family:var(--serif);font-size:21px;font-weight:700;color:var(--ink);letter-spacing:-.01em;display:inline-flex;align-items:center;gap:6px}
+.hub-h2 .chev{width:17px;height:17px;color:var(--muted);transition:transform .2s}
+.hub-title[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.hub-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.hub-menu{position:absolute;top:60px;left:16px;z-index:40;background:var(--paper);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md);padding:6px;min-width:252px;display:none;flex-direction:column;gap:2px}
+.hub-menu.open{display:flex;animation:fade .18s ease}
+.hub-opt{display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:none;border-radius:10px;padding:11px 12px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;text-align:left;width:100%}
+.hub-opt:hover{background:rgba(45,79,61,.06)}
+.hub-opt.active{background:rgba(45,79,61,.10);color:var(--sage)}
+.hub-opt .chk{width:16px;height:16px;color:var(--sage);flex-shrink:0}
 .fact-thumb{height:104px;width:100%}
 .fact-body{padding:13px 14px 15px}
 .fact-kicker{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
@@ -363,10 +380,6 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <button class="icon-btn" id="searchTop" aria-label="Cari">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
 </button>
-<div class="streak-chip" id="streakChip" title="Runtunan harianmu">
-<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.7-2.5C8 8.5 8 7 7 6c0 0 5 1 5 5 0-2 0-5 0-9Z"/></svg>
-<span id="streakNum">7</span>
-</div>
 </div>
 </header>
 
@@ -376,10 +389,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <!-- HOME / FEED -->
 <section class="view active" id="view-home">
 <div class="chips" id="feedChips"></div>
-<div id="quoteSlot"></div>
-<div id="newsSlot"></div>
-<div id="historySlot"></div>
-<div id="factsSlot"></div>
+<div id="hubSlot"></div>
 
 <div class="sec-head"><div><h2>Trending Now</h2><div class="sub">Sorotan pilihan editor</div></div></div>
 <div class="trend-rail" id="trendRail"></div>
@@ -393,8 +403,10 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <!-- DISCOVER -->
 <section class="view" id="view-discover">
 <div class="searchbar">
+<div class="searchbar-in">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
 <input id="searchInput" type="text" placeholder="Search insights, topics, thinkers…" />
+</div>
 </div>
 <div class="sec-head"><div><h2>Explore by Topic</h2></div></div>
 <div class="cat-grid" id="catGrid"></div>
@@ -641,6 +653,13 @@ const SUBFILTERS=[{id:'all',label:'Semua'},{id:'tokoh',label:'🧑 Tokoh'},{id:'
 function isTopicCat(id){return id!=='all';}
 function renderChips(){
 const wrap=$('#feedChips');if(!wrap)return;wrap.innerHTML='';
+if(isTopicCat(activeCat)){
+const cat=resolveCat(activeCat)||{name:activeCat};
+const b=el('button','chip active topic-selected');
+b.innerHTML=svg('<path d="m15 18-6-6 6-6"/>','chip-back')+'<span>'+esc(cat.label||cat.name)+'</span>';
+b.onclick=()=>{activeCat='all';activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+wrap.appendChild(b);
+}else{
 const all=[{id:'all',name:'Untukmu'}].concat(TOPICS);
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
@@ -648,6 +667,7 @@ b.textContent=c.label||c.name;
 b.onclick=()=>{activeCat=c.id;activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 wrap.appendChild(b);
 });
+}
 renderSubChips();
 }
 function subCounts(){
@@ -655,10 +675,12 @@ const st=feedCache[activeCat];const items=(st&&st.items)?st.items:[];
 const m={};items.forEach(a=>{const k=a.kind||'konsep';m[k]=(m[k]||0)+1;});return m;
 }
 function renderSubChips(){
-const wrap=$('#subChips');if(!wrap)return;
-if(!isTopicCat(activeCat)){wrap.style.display='none';wrap.innerHTML='';return;}
-wrap.style.display='flex';
-const counts=subCounts();wrap.innerHTML='';
+const legacy=$('#subChips');if(legacy){legacy.style.display='none';legacy.innerHTML='';}
+const wrap=$('#feedChips');if(!wrap)return;
+wrap.querySelectorAll('.subchip,.chip-gap').forEach(n=>n.remove());
+if(!isTopicCat(activeCat))return;
+const counts=subCounts();
+const gap=el('div','chip-gap');wrap.appendChild(gap);
 SUBFILTERS.forEach(s=>{
 if(s.id!=='all'&&!counts[s.id])return;
 const b=el('button','subchip'+(activeSub===s.id?' active':''));
@@ -1059,7 +1081,7 @@ document.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>showView(n.data
 $('#searchTop').onclick=()=>{showView('discover');setTimeout(()=>$('#searchInput').focus(),100);};
 $('#searchInput').addEventListener('input',e=>onDiscSearch(e.target.value));
 $('#refreshFeed').onclick=()=>{toast('Memuat konten terbaru\u2026');loadContent(true);$('#scroll').scrollTo({top:0,behavior:'smooth'});};
-$('#streakChip').onclick=()=>{showView('library');};
+const _sk=$('#streakChip');if(_sk)_sk.onclick=()=>{showView('library');};
 
 /* greeting */
 (function(){const h=new Date().getHours();$('#greet').textContent=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam';})();
@@ -1171,6 +1193,7 @@ let FACTS=[];
 let NEWS=null;
 let HISTORY=null;
 let factsShown=8;
+let hubTab='facts';let hubOpen=false;
 const NEWS_KEY='insight_news_v1';
 const HISTORY_KEY='insight_history_v1';
 function pgInfo(pg){pg=pg||{};return {url:(pg.content_urls&&pg.content_urls.desktop&&pg.content_urls.desktop.page)||'',thumb:(pg.thumbnail&&pg.thumbnail.source)||'',title:(pg.titles&&pg.titles.normalized)||pg.normalizedtitle||pg.title||''};}
@@ -1207,31 +1230,37 @@ const a={id:id,cat:'fakta',catName:catName,title:(f.title||(f.text||'').slice(0,
 ARTICLE_INDEX[id]=a;return a;
 }
 function railSkeleton(){return Array(3).fill('<div class="fact-card" style="pointer-events:none;opacity:.55"><div class="fact-body"><span class="fact-kicker" style="color:var(--faint)">Memuat\u2026</span><p style="color:var(--faint)">Menyiapkan konten untukmu\u2026</p></div></div>').join('');}
-function renderNews(){
-const slot=$('#newsSlot');if(!slot)return;
-const loading=(NEWS===null);
-const items=loading?[]:((NEWS&&NEWS.length)?NEWS:FALLBACK_NEWS);
-const cards=loading?railSkeleton():items.slice(0,12).map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>','Peristiwa terkini',f.text);}).join('');
-slot.innerHTML='<div class="sec-head"><div><h2>Peristiwa Terkini</h2><div class="sub">Kabar &amp; sorotan dunia</div></div></div><div class="facts-rail">'+cards+'</div>';
+function hubMeta(tab){
+if(tab==='news')return {title:'Peristiwa Terkini',sub:'Kabar & sorotan dunia',icon:'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>'};
+if(tab==='history')return {title:'Hari Ini dalam Sejarah',sub:'Peristiwa penting pada tanggal ini',icon:'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>'};
+return {title:'Tahukah Kamu?',sub:'Fakta menarik dari Wikipedia',icon:'<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2V17h6v-.4c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>'};
 }
-function renderHistory(){
-const slot=$('#historySlot');if(!slot)return;
-const loading=(HISTORY===null);
-const items=loading?[]:((HISTORY&&HISTORY.length)?HISTORY:FALLBACK_HISTORY);
-const cards=loading?railSkeleton():items.slice(0,18).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);return railCard(a,'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>',(f.year?('Tahun '+f.year):'Hari ini'),f.text);}).join('');
-slot.innerHTML='<div class="sec-head"><div><h2>Hari Ini dalam Sejarah</h2><div class="sub">Peristiwa penting pada tanggal ini</div></div></div><div class="facts-rail">'+cards+'</div>';
-}
-function renderFacts(){
-const slot=$('#factsSlot');if(!slot)return;
-const pool=FACTS.length?FACTS:FALLBACK_FACTS;
-if(!pool.length){slot.innerHTML='';return;}
-const show=pool.slice(0,factsShown);
-const cards=show.map((f,i)=>{const a=mkFactArticle(f,'Tahukah Kamu','fact',i);return railCard(a,'<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2V17h6v-.4c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>',(f.year?('Tahun '+f.year):'Fakta menarik'),f.text);}).join('');
+function renderHub(){
+const slot=$('#hubSlot');if(!slot)return;
+const meta=hubMeta(hubTab);
+let cards='',more='';
+if(hubTab==='news'){
+const loading=(NEWS===null);const items=loading?[]:((NEWS&&NEWS.length)?NEWS:FALLBACK_NEWS);
+cards=loading?railSkeleton():items.slice(0,12).map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,meta.icon,'Peristiwa terkini',f.text);}).join('');
+}else if(hubTab==='history'){
+const loading=(HISTORY===null);const items=loading?[]:((HISTORY&&HISTORY.length)?HISTORY:FALLBACK_HISTORY);
+cards=loading?railSkeleton():items.slice(0,18).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);return railCard(a,meta.icon,(f.year?('Tahun '+f.year):'Hari ini'),f.text);}).join('');
+}else{
+const pool=FACTS.length?FACTS:FALLBACK_FACTS;const show=pool.slice(0,factsShown);
+cards=show.map((f,i)=>{const a=mkFactArticle(f,'Tahukah Kamu','fact',i);return railCard(a,meta.icon,(f.year?('Tahun '+f.year):'Fakta menarik'),f.text);}).join('');
 const rem=pool.length-factsShown;
-const more=rem>0?`<div class="fact-card" id="moreFacts"><div class="fact-body" style="display:flex;align-items:center;justify-content:center;min-height:74px"><span class="fact-kicker">${svg('<path d="M12 5v14"/><path d="M5 12h14"/>')} Muat ${Math.min(8,rem)} lagi</span></div></div>`:'';
-slot.innerHTML='<div class="sec-head"><div><h2>Tahukah Kamu?</h2><div class="sub">Fakta menarik dari Wikipedia</div></div></div><div class="facts-rail">'+cards+more+'</div>';
-const mf=$('#moreFacts');if(mf)mf.onclick=()=>{factsShown+=8;renderFacts();};
+more=rem>0?`<div class="fact-card" id="moreFacts"><div class="fact-body" style="display:flex;align-items:center;justify-content:center;min-height:74px"><span class="fact-kicker">${svg('<path d="M12 5v14"/><path d="M5 12h14"/>')} Muat ${Math.min(8,rem)} lagi</span></div></div>`:'';
 }
+const opts=[['facts','\uD83D\uDCA1','Tahukah Kamu?'],['history','\uD83D\uDCDC','Hari Ini dalam Sejarah'],['news','\uD83D\uDCF0','Peristiwa Terkini']];
+const menu=opts.map(o=>`<button class="hub-opt${hubTab===o[0]?' active':''}" data-hub="${o[0]}"><span>${o[1]} ${o[2]}</span>${hubTab===o[0]?svg('<path d="M20 6 9 17l-5-5"/>','chk'):''}</button>`).join('');
+slot.innerHTML=`<div class="hub"><div class="hub-head"><button class="hub-title" id="hubToggle" aria-expanded="${hubOpen}"><span class="hub-tt"><span class="hub-h2">${esc(meta.title)} ${svg('<path d="m6 9 6 6 6-6"/>','chev')}</span><span class="hub-sub">${esc(meta.sub)} \u00b7 ketuk untuk ganti</span></span></button><div class="hub-menu${hubOpen?' open':''}" id="hubMenu">${menu}</div></div><div class="facts-rail">${cards}${more}</div></div>`;
+const tg=$('#hubToggle');if(tg)tg.onclick=(e)=>{e.stopPropagation();hubOpen=!hubOpen;const m=$('#hubMenu');if(m)m.classList.toggle('open',hubOpen);tg.setAttribute('aria-expanded',hubOpen);};
+slot.querySelectorAll('.hub-opt').forEach(b=>{b.onclick=(e)=>{e.stopPropagation();hubTab=b.dataset.hub;hubOpen=false;renderHub();};});
+const mf=$('#moreFacts');if(mf)mf.onclick=(e)=>{e.stopPropagation();factsShown+=8;renderHub();};
+}
+function renderNews(){renderHub();}
+function renderHistory(){renderHub();}
+function renderFacts(){renderHub();}
 async function loadFacts(){
 try{const c=JSON.parse(localStorage.getItem(FACTS_KEY)||'null');if(c&&c.date===todayStr()&&c.facts&&c.facts.length){FACTS=c.facts;renderFacts();return;}}catch(e){}
 try{const f=await fetchFacts();if(f&&f.length){FACTS=f;try{localStorage.setItem(FACTS_KEY,JSON.stringify({date:todayStr(),facts:f}));}catch(e){}renderFacts();return;}}catch(e){}
@@ -1251,8 +1280,9 @@ renderHistory();
 /* ============ INIT ============ */
 feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,cont:null,catDone:false,done:false,loading:false};
 buildTopics(FALLBACK_TOPICS);
-renderChips();renderFeed();renderFacts();renderNews();renderHistory();
+renderChips();renderFeed();renderHub();
 const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
+document.addEventListener('click',(e)=>{if(hubOpen&&!e.target.closest('.hub-head')){hubOpen=false;const m=$('#hubMenu');if(m)m.classList.remove('open');const t=$('#hubToggle');if(t)t.setAttribute('aria-expanded','false');}});
 loadTopics();loadContent();loadFacts();loadNews();loadHistory();
 </script>
 </body>
