@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#2d4f3d" />
+<title>Insight — Mindful Knowledge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+--sage:#2d4f3d;
+--sage-700:#254032;
+--sage-500:#3d6b52;
+--sage-300:#7ba18c;
+--sage-tint:#e9efe9;
+--sage-tint-2:#f1f5f0;
+--parchment:#fbf9f8;
+--paper:#ffffff;
+--ink:#2b2b29;
+--muted:#7d7a75;
+--faint:#a6a29c;
+--border:#ece8e3;
+--gold:#b8894b;
+--shadow-sm:0 1px 2px rgba(45,79,61,.05),0 4px 12px rgba(45,79,61,.05);
+--shadow-md:0 6px 24px rgba(45,79,61,.10);
+--serif:"Playfair Display",Georgia,"Times New Roman",serif;
+--sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+font-family:var(--sans);
+background:#e4e1dc;
+color:var(--ink);
+line-height:1.5;
+-webkit-font-smoothing:antialiased;
+display:flex;justify-content:center;
+}
+/* Phone shell */
+.app{
+position:relative;
+width:100%;
+max-width:440px;
+min-height:100vh;
+background:var(--parchment);
+display:flex;flex-direction:column;
+overflow:hidden;
+box-shadow:0 0 60px rgba(0,0,0,.12);
+}
+@media(min-width:520px){
+body{padding:24px 0;background:#ddd9d3}
+.app{min-height:calc(100vh - 48px);border-radius:28px}
+}
+
+/* ---------- Top Bar ---------- */
+.topbar{
+position:sticky;top:0;z-index:40;
+background:linear-gradient(180deg,rgba(251,249,248,.97),rgba(251,249,248,.80));
+backdrop-filter:saturate(180%) blur(18px);
+-webkit-backdrop-filter:saturate(180%) blur(18px);
+border-bottom:1px solid var(--border);
+padding:12px 18px;
+display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.topbar .brand{display:flex;align-items:center;gap:11px;min-width:0}
+.brand .logo{
+width:44px;height:44px;border-radius:15px;flex-shrink:0;position:relative;
+background:linear-gradient(150deg,#5f8f72 0%,#2d4f3d 58%,#213c2d 100%);
+display:grid;place-items:center;color:#fff;
+box-shadow:0 6px 15px rgba(45,79,61,.32),inset 0 1px 0 rgba(255,255,255,.30);
+}
+.brand .logo::after{content:"";position:absolute;inset:0;border-radius:15px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+.brand .logo svg{width:23px;height:23px;position:relative;z-index:2}
+.brand .tt{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.brand .tt .greet{font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.10em;text-transform:uppercase}
+.brand .tt .name{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.topbar .ph-title{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--sage)}
+.top-actions{display:flex;align-items:center;gap:9px}
+.icon-btn{
+width:42px;height:42px;border-radius:14px;border:1px solid var(--border);
+background:var(--paper);display:grid;place-items:center;cursor:pointer;
+color:var(--sage);transition:.18s;box-shadow:var(--shadow-sm);
+}
+.icon-btn:active{transform:scale(.90)}
+.icon-btn:hover{border-color:var(--sage-300)}
+.icon-btn svg{width:19px;height:19px}
+.streak-chip{
+display:flex;align-items:center;gap:6px;height:42px;padding:0 15px;
+border-radius:14px;background:linear-gradient(145deg,#3d6b52,#2d4f3d);color:#fff;font-weight:800;font-size:15px;
+cursor:pointer;transition:.18s;
+box-shadow:0 5px 13px rgba(45,79,61,.30),inset 0 1px 0 rgba(255,255,255,.22);
+}
+.streak-chip:active{transform:scale(.94)}
+.streak-chip svg{width:17px;height:17px;color:#ffce87;filter:drop-shadow(0 0 5px rgba(255,190,90,.6))}
+
+/* ---------- Scroll area ---------- */
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:96px}
+.view{display:none;animation:fade .4s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- Category chips ---------- */
+.chips{display:flex;gap:9px;overflow-x:auto;padding:16px 0 6px 20px;scrollbar-width:none;scroll-padding-left:20px}
+.chips::after{content:"";flex:0 0 20px;align-self:stretch}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+flex-shrink:0;padding:9px 16px;border-radius:999px;border:1px solid var(--border);
+background:var(--paper);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;
+transition:.18s;white-space:nowrap;
+}
+.chip.active{background:var(--sage);color:#fff;border-color:var(--sage)}
+.chip:active{transform:scale(.95)}
+
+/* ---------- Section header ---------- */
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 12px}
+.sec-head h2{font-family:var(--serif);font-size:21px;font-weight:700;color:var(--ink);letter-spacing:-.01em}
+.sec-head .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.sec-head a{font-size:12.5px;color:var(--sage-500);font-weight:600;cursor:pointer}
+
+/* ---------- Featured card ---------- */
+.feature{
+margin:4px 20px 6px;border-radius:20px;overflow:hidden;position:relative;
+background:var(--sage);color:#fff;cursor:pointer;box-shadow:var(--shadow-md);
+min-height:230px;display:flex;flex-direction:column;justify-content:flex-end;
+}
+.feature .bg{position:absolute;inset:0;opacity:.9}
+.feature .grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(37,64,50,.15) 0%,rgba(30,52,41,.55) 55%,rgba(24,42,33,.92) 100%)}
+.feature .content{position:relative;padding:22px 20px 20px;z-index:2}
+.feature .kicker{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.18);padding:5px 11px;border-radius:999px;backdrop-filter:blur(4px);margin-bottom:12px}
+.feature h3{font-family:var(--serif);font-size:25px;line-height:1.18;font-weight:700;margin-bottom:8px}
+.feature .meta{display:flex;align-items:center;gap:12px;font-size:12.5px;opacity:.9;font-weight:500}
+.feature .meta .dot{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.7}
+
+/* ---------- Insight card ---------- */
+.feed{padding:4px 20px 8px;display:flex;flex-direction:column;gap:16px}
+.card{
+background:var(--paper);border:1px solid var(--border);border-radius:18px;
+overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
+}
+.card:active{transform:scale(.985)}
+.card .thumb{height:150px;position:relative;overflow:hidden}
+.card .thumb .ph{position:absolute;inset:0}
+.ph.img{background-size:cover;background-position:center;background-repeat:no-repeat;background-color:var(--sage-tint)}
+.card .thumb .tag{position:absolute;top:12px;left:12px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(30,52,41,.6);backdrop-filter:blur(4px);padding:5px 10px;border-radius:999px}
+.card .body{padding:16px 17px 17px}
+.card h3{font-family:var(--serif);font-size:18.5px;line-height:1.25;font-weight:700;color:var(--ink);margin-bottom:7px}
+.card p{font-size:13.5px;color:var(--muted);line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.card .foot .info{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--faint);font-weight:500}
+.card .foot .info .avatar{width:22px;height:22px;border-radius:50%;background:var(--sage-tint);color:var(--sage);display:grid;place-items:center;font-size:10px;font-weight:700}
+.card .foot .info .dot{width:3px;height:3px;border-radius:50%;background:var(--faint)}
+.save-btn{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--parchment);display:grid;place-items:center;cursor:pointer;color:var(--muted);transition:.16s}
+.save-btn svg{width:16px;height:16px}
+.save-btn.saved{background:var(--sage-tint);color:var(--sage);border-color:var(--sage-300)}
+.save-btn:active{transform:scale(.88)}
+.read-badge{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.92);color:var(--sage);font-size:10.5px;font-weight:700;padding:5px 9px;border-radius:999px;display:none;align-items:center;gap:4px}
+.read-badge svg{width:11px;height:11px}
+.card.read .read-badge{display:flex}
+
+/* ---------- Quote of the day ---------- */
+.quote-card{margin:14px 20px 2px;background:linear-gradient(145deg,#3d6b52,#2d4f3d);color:#fff;border-radius:18px;padding:20px 20px 17px;position:relative;overflow:hidden;box-shadow:var(--shadow-md)}
+.quote-card .q-mark{position:absolute;top:0;right:16px;font-family:var(--serif);font-size:90px;line-height:1;opacity:.16;pointer-events:none}
+.quote-card .q-text{font-family:var(--serif);font-size:17px;line-height:1.45;font-style:italic;position:relative;z-index:2}
+.quote-card .q-auth{margin-top:10px;font-size:12.5px;font-weight:600;opacity:.88;position:relative;z-index:2}
+
+/* ---------- Trending rail (carousel) ---------- */
+.trend-rail{display:flex;gap:13px;overflow-x:auto;padding:4px 0 10px 20px;scrollbar-width:none;scroll-snap-type:x mandatory;scroll-padding-left:20px}
+.trend-rail::after{content:"";flex:0 0 20px;align-self:stretch}
+.trend-rail::-webkit-scrollbar{display:none}
+.trend-card{scroll-snap-align:start;flex-shrink:0;width:232px;height:152px;border-radius:16px;overflow:hidden;position:relative;color:#fff;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:15px;box-shadow:var(--shadow-md)}
+.trend-card:active{transform:scale(.97)}
+.trend-card .ph{position:absolute;inset:0}
+.trend-card .grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,52,41,.08),rgba(24,42,33,.86))}
+.trend-card .kicker{position:relative;z-index:2;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.2);padding:4px 9px;border-radius:999px;margin-bottom:auto;width:-moz-fit-content;width:fit-content;backdrop-filter:blur(4px)}
+.trend-card .kicker svg{width:12px;height:12px;color:#ffce87}
+.trend-card h4{position:relative;z-index:2;font-family:var(--serif);font-size:16px;line-height:1.2;font-weight:700;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.trend-card .m{position:relative;z-index:2;font-size:11px;opacity:.9;font-weight:500}
+
+/* ---------- Read-in-place full card ---------- */
+.card-full{background:var(--paper);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:.2s}
+.card-full:active{transform:scale(.99)}
+.card-full .thumb-full{height:172px;position:relative;overflow:hidden}
+.card-full .thumb-full .ph{position:absolute;inset:0}
+.card-full .thumb-full .tag{position:absolute;top:13px;left:13px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(30,52,41,.6);backdrop-filter:blur(4px);padding:5px 10px;border-radius:999px}
+.card-full .thumb-full .save-btn{position:absolute;top:11px;right:11px;background:rgba(251,249,248,.92);backdrop-filter:blur(4px)}
+.card-full .body{padding:17px 18px 18px}
+.card-full h3{font-family:var(--serif);font-size:20px;line-height:1.25;font-weight:700;color:var(--ink);margin-bottom:11px}
+.card-full .metatop{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--faint);font-weight:500;margin-bottom:13px;flex-wrap:wrap}
+.card-full .metatop .avatar{width:22px;height:22px;border-radius:50%;background:var(--sage-tint);color:var(--sage);display:grid;place-items:center;font-size:10px;font-weight:700}
+.card-full .metatop .dot{width:3px;height:3px;border-radius:50%;background:var(--faint)}
+.card-full .metatop .readflag{display:inline-flex;align-items:center;gap:3px;color:var(--sage);font-weight:700}
+.card-full .metatop .readflag svg{width:12px;height:12px}
+.card-full .intro{font-size:14.5px;line-height:1.65;color:#4a4a46;margin-bottom:15px}
+.mini-take{background:var(--sage-tint-2);border:1px solid var(--sage-tint);border-radius:12px;padding:13px 14px;margin-bottom:15px}
+.mini-take h5{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:9px}
+.mini-take h5 svg{width:14px;height:14px}
+.mini-take ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.mini-take li{display:flex;gap:8px;font-size:13px;color:var(--ink);line-height:1.45}
+.mini-take li svg{width:15px;height:15px;color:var(--sage);flex-shrink:0;margin-top:1px}
+.readmore{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:13.5px;font-weight:700;color:var(--sage);background:none;border:none;cursor:pointer;padding:2px 0}
+.readmore svg{width:16px;height:16px}
+.readmore:active{opacity:.6}
+
+/* ---------- Deep Dive (reader) ---------- */
+#view-read{padding-bottom:110px}
+.reader-hero{position:relative;height:260px;overflow:hidden}
+.reader-hero .ph{position:absolute;inset:0}
+.reader-hero .grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,52,41,.25),rgba(30,52,41,.05) 40%,var(--parchment) 100%)}
+.reader-back{position:absolute;top:16px;left:16px;z-index:5;width:42px;height:42px;border-radius:12px;background:rgba(251,249,248,.9);backdrop-filter:blur(6px);border:none;display:grid;place-items:center;cursor:pointer;color:var(--sage);box-shadow:var(--shadow-sm)}
+.reader-back svg{width:20px;height:20px}
+.reader-body{padding:0 22px 20px;margin-top:-46px;position:relative;z-index:3}
+.reader-cat{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sage);background:var(--sage-tint);padding:6px 12px;border-radius:999px;margin-bottom:14px}
+.reader-body h1{font-family:var(--serif);font-size:29px;line-height:1.2;font-weight:800;letter-spacing:-.01em;margin-bottom:16px}
+.reader-author{display:flex;align-items:center;gap:11px;padding-bottom:20px;margin-bottom:22px;border-bottom:1px solid var(--border)}
+.reader-author .avatar{width:42px;height:42px;border-radius:50%;background:var(--sage);color:#fff;display:grid;place-items:center;font-weight:700;font-size:15px;font-family:var(--serif)}
+.reader-author .who{flex:1;line-height:1.3}
+.reader-author .who .n{font-size:14px;font-weight:700;color:var(--ink)}
+.reader-author .who .r{font-size:12px;color:var(--muted)}
+.reader-author .rt{font-size:12px;color:var(--muted);text-align:right;font-weight:500}
+.takeaways{background:var(--sage-tint-2);border:1px solid var(--sage-tint);border-left:4px solid var(--sage);border-radius:14px;padding:18px 18px 16px;margin-bottom:24px}
+.takeaways h4{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:12px}
+.takeaways h4 svg{width:16px;height:16px}
+.takeaways ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+.takeaways li{display:flex;gap:10px;font-size:14px;color:var(--ink);line-height:1.5}
+.takeaways li svg{width:16px;height:16px;color:var(--sage);flex-shrink:0;margin-top:2px}
+.article{font-size:16.5px;line-height:1.75;color:#3a3a37}
+.article p{margin-bottom:18px}
+.article h3{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--ink);margin:26px 0 12px}
+.article blockquote{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--sage);border-left:3px solid var(--sage-300);padding:4px 0 4px 18px;margin:24px 0}
+.citations{margin-top:28px;padding-top:20px;border-top:1px solid var(--border)}
+.citations h4{font-size:12.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.citations .cite{display:flex;gap:10px;font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:9px;word-break:break-word}
+.citations .cite .num{color:var(--sage);font-weight:700;flex-shrink:0}
+.reader-actions{position:absolute;bottom:0;left:0;right:0;display:flex;gap:12px;padding:14px 22px calc(14px + env(safe-area-inset-bottom));background:rgba(251,249,248,.92);backdrop-filter:blur(14px);border-top:1px solid var(--border);max-width:440px;margin:0 auto;z-index:60}
+.btn-primary{flex:1;height:50px;border-radius:14px;border:none;background:var(--sage);color:#fff;font-size:15px;font-weight:700;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:.18s;box-shadow:var(--shadow-sm)}
+.btn-primary:active{transform:scale(.97)}
+.btn-primary svg{width:18px;height:18px}
+.btn-primary.done{background:var(--sage-tint);color:var(--sage)}
+.btn-ghost{width:50px;height:50px;border-radius:14px;border:1px solid var(--border);background:var(--paper);display:grid;place-items:center;cursor:pointer;color:var(--sage)}
+.btn-ghost svg{width:20px;height:20px}
+.btn-ghost.saved{background:var(--sage-tint);border-color:var(--sage-300)}
+
+/* ---------- Discover ---------- */
+.searchbar{margin:16px 20px 8px;position:relative}
+.searchbar svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--faint)}
+.searchbar input{width:100%;height:48px;border-radius:14px;border:1px solid var(--border);background:var(--paper);padding:0 16px 0 44px;font-size:15px;font-family:var(--sans);color:var(--ink);outline:none;transition:.18s}
+.searchbar input:focus{border-color:var(--sage-300);box-shadow:0 0 0 3px var(--sage-tint)}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;padding:8px 20px}
+.cat-tile{position:relative;height:112px;border-radius:16px;overflow:hidden;cursor:pointer;color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;transition:.18s;box-shadow:var(--shadow-sm)}
+.cat-tile:active{transform:scale(.97)}
+.cat-tile .grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(30,52,41,.72))}
+.cat-tile .ic{position:relative;z-index:2;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.2);backdrop-filter:blur(4px);display:grid;place-items:center;margin-bottom:auto}
+.cat-tile .ic svg{width:18px;height:18px}
+.cat-tile .nm{position:relative;z-index:2;font-family:var(--serif);font-size:16px;font-weight:700}
+.cat-tile .ct{position:relative;z-index:2;font-size:11px;opacity:.85;font-weight:500}
+
+/* ---------- Library / Profile ---------- */
+.profile-head{padding:24px 20px 8px;display:flex;align-items:center;gap:16px}
+.profile-head .pfp{width:64px;height:64px;border-radius:20px;background:linear-gradient(145deg,var(--sage-500),var(--sage));color:#fff;display:grid;place-items:center;font-family:var(--serif);font-size:26px;font-weight:700;box-shadow:var(--shadow-sm)}
+.profile-head .info{flex:1}
+.profile-head .info .lvl{font-size:12px;color:var(--sage-500);font-weight:700;letter-spacing:.03em}
+.profile-head .info h2{font-family:var(--serif);font-size:22px;font-weight:700;color:var(--ink)}
+.profile-head .info .em{font-size:12.5px;color:var(--muted)}
+.progress-wrap{padding:14px 20px 6px}
+.progress-card{background:var(--paper);border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow-sm)}
+.progress-card .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.progress-card .row .l{font-size:13px;font-weight:600;color:var(--ink)}
+.progress-card .row .r{font-size:12px;color:var(--muted)}
+.bar{height:9px;border-radius:999px;background:var(--sage-tint);overflow:hidden}
+.bar span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sage-500),var(--sage));transition:width .6s ease}
+.progress-card .note{font-size:11.5px;color:var(--faint);margin-top:9px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px 20px 6px}
+.stat{background:var(--paper);border:1px solid var(--border);border-radius:16px;padding:16px 10px;text-align:center;box-shadow:var(--shadow-sm)}
+.stat .v{font-family:var(--serif);font-size:26px;font-weight:800;color:var(--sage);line-height:1}
+.stat .k{font-size:11px;color:var(--muted);margin-top:6px;font-weight:500}
+
+.ritual{display:flex;align-items:center;gap:13px;background:var(--paper);border:1px solid var(--border);border-radius:14px;padding:14px 15px;margin:0 20px 11px;box-shadow:var(--shadow-sm)}
+.ritual .ic{width:40px;height:40px;border-radius:11px;background:var(--sage-tint);color:var(--sage);display:grid;place-items:center;flex-shrink:0}
+.ritual .ic svg{width:19px;height:19px}
+.ritual .tx{flex:1;line-height:1.3}
+.ritual .tx .t{font-size:14px;font-weight:600;color:var(--ink)}
+.ritual .tx .s{font-size:12px;color:var(--muted)}
+.toggle{width:46px;height:27px;border-radius:999px;background:var(--border);position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.on{background:var(--sage)}
+.toggle.on::after{transform:translateX(19px)}
+
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:8px 20px 6px}
+.badge{text-align:center}
+.badge .medal{width:100%;aspect-ratio:1;border-radius:16px;display:grid;place-items:center;margin-bottom:6px;border:1px solid var(--border);background:var(--paper);color:var(--sage);box-shadow:var(--shadow-sm)}
+.badge.locked .medal{background:var(--parchment);color:var(--faint);opacity:.6}
+.badge .medal svg{width:24px;height:24px}
+.badge .bn{font-size:10.5px;color:var(--muted);font-weight:600;line-height:1.2}
+
+.empty{text-align:center;padding:50px 30px;color:var(--faint)}
+.empty svg{width:44px;height:44px;margin-bottom:14px;opacity:.5}
+.empty p{font-size:14px}
+
+/* ---------- Bottom Nav ---------- */
+.bottomnav{
+position:absolute;bottom:0;left:0;right:0;z-index:50;
+background:rgba(251,249,248,.92);
+backdrop-filter:saturate(180%) blur(16px);-webkit-backdrop-filter:saturate(180%) blur(16px);
+border-top:1px solid var(--border);
+display:flex;justify-content:space-around;align-items:center;
+padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;cursor:pointer;color:var(--faint);transition:.16s;border:none;background:none;font-family:var(--sans)}
+.nav-item svg{width:23px;height:23px;stroke-width:1.9}
+.nav-item .lb{font-size:10.5px;font-weight:600}
+.nav-item.active{color:var(--sage)}
+.nav-item:active{transform:scale(.9)}
+
+/* ---------- Tahukah Kamu (facts) ---------- */
+.facts-rail{display:flex;gap:12px;overflow-x:auto;padding:4px 0 12px 20px;scrollbar-width:none;scroll-snap-type:x mandatory;scroll-padding-left:20px}
+.facts-rail::after{content:"";flex:0 0 20px;align-self:stretch}
+.facts-rail::-webkit-scrollbar{display:none}
+.fact-card{scroll-snap-align:start;flex-shrink:0;width:250px;background:var(--paper);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:.18s;display:flex;flex-direction:column}
+.fact-card:active{transform:scale(.98)}
+.fact-thumb{height:104px;width:100%}
+.fact-body{padding:13px 14px 15px}
+.fact-kicker{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.fact-kicker svg{width:14px;height:14px}
+.fact-card p{font-size:13px;line-height:1.5;color:var(--ink);display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+/* ---------- Load more ---------- */
+.loadmore-wrap{display:flex;justify-content:center;padding:6px 20px 12px}
+.btn-more{display:inline-flex;align-items:center;gap:9px;padding:12px 22px;border-radius:14px;border:1px solid var(--sage-300);background:var(--paper);color:var(--sage);font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;transition:.18s;box-shadow:var(--shadow-sm)}
+.btn-more:hover{background:var(--sage-tint)}
+.btn-more:active{transform:scale(.97)}
+.btn-more:disabled{opacity:.7;cursor:default}
+.more-end{font-size:12.5px;color:var(--faint);text-align:center;padding:6px 0}
+.spin{width:15px;height:15px;border-radius:50%;border:2px solid var(--sage-tint);border-top-color:var(--sage);animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* toast */
+.toast{position:absolute;left:50%;bottom:104px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:.3s;z-index:80;box-shadow:var(--shadow-md);white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOP BAR -->
+<header class="topbar" id="topbar">
+<div class="brand" id="brandBlock">
+<div class="logo">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0-6 6c0 2 1 3.5 2.2 4.8.6.7 1 1.5 1 2.5v.7h5.6v-.7c0-1 .4-1.8 1-2.5C17 12.5 18 11 18 9a6 6 0 0 0-6-6Z"/><path d="M9.5 21h5"/></svg>
+</div>
+<div class="tt">
+<span class="greet" id="greet">Selamat pagi</span>
+<span class="name">Hari</span>
+</div>
+</div>
+<div class="top-actions">
+<button class="icon-btn" id="searchTop" aria-label="Cari">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+</button>
+<div class="streak-chip" id="streakChip" title="Runtunan harianmu">
+<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.7-2.5C8 8.5 8 7 7 6c0 0 5 1 5 5 0-2 0-5 0-9Z"/></svg>
+<span id="streakNum">7</span>
+</div>
+</div>
+</header>
+
+<!-- SCROLL AREA -->
+<main class="scroll" id="scroll">
+
+<!-- HOME / FEED -->
+<section class="view active" id="view-home">
+<div class="chips" id="feedChips"></div>
+<div id="quoteSlot"></div>
+<div id="factsSlot"></div>
+
+<div class="sec-head"><div><h2>Trending Now</h2><div class="sub">Sorotan pilihan editor</div></div></div>
+<div class="trend-rail" id="trendRail"></div>
+
+<div class="sec-head"><div><h2>Your Daily Feed</h2><div class="sub">Baca langsung, tanpa terburu-buru</div></div><a id="refreshFeed">Refresh</a></div>
+<div class="feed" id="feedList"></div>
+<div class="loadmore-wrap" id="loadMoreWrap"></div>
+</section>
+
+<!-- DISCOVER -->
+<section class="view" id="view-discover">
+<div class="searchbar">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+<input id="searchInput" type="text" placeholder="Search insights, topics, thinkers…" />
+</div>
+<div class="sec-head"><div><h2>Explore by Topic</h2></div></div>
+<div class="cat-grid" id="catGrid"></div>
+<div class="sec-head" id="discResultsHead"><div><h2>Trending Now</h2></div></div>
+<div class="feed" id="discList"></div>
+</section>
+
+<!-- LIBRARY -->
+<section class="view" id="view-library">
+<div class="sec-head"><div><h2>Growth Library</h2><div class="sub">Track your journey of learning</div></div></div>
+<div class="progress-wrap">
+<div class="progress-card">
+<div class="row"><span class="l">Weekly Reading Goal</span><span class="r" id="goalTxt">0 / 10 insights</span></div>
+<div class="bar"><span id="goalBar" style="width:0%"></span></div>
+<div class="note" id="goalNote">Read insights to build your streak.</div>
+</div>
+</div>
+<div class="stats">
+<div class="stat"><div class="v" id="stRead">0</div><div class="k">Insights Read</div></div>
+<div class="stat"><div class="v" id="stStreak">7</div><div class="k">Day Streak</div></div>
+<div class="stat"><div class="v" id="stSaved">0</div><div class="k">Saved</div></div>
+</div>
+
+<div class="sec-head"><div><h2>Daily Rituals</h2></div></div>
+<div id="ritualList"></div>
+
+<div class="sec-head"><div><h2>Saved for Later</h2></div></div>
+<div class="feed" id="savedList"></div>
+</section>
+
+<!-- PROFILE -->
+<section class="view" id="view-profile">
+<div class="profile-head">
+<div class="pfp">H</div>
+<div class="info">
+<div class="lvl" id="pLevelLbl">Level 4 · Curious Mind</div>
+<h2>Hari</h2>
+<div class="em">pamungkashari71</div>
+</div>
+</div>
+<div class="progress-wrap">
+<div class="progress-card">
+<div class="row"><span class="l">Progress to Level 5</span><span class="r" id="xpTxt">— XP</span></div>
+<div class="bar"><span id="xpBar" style="width:0%"></span></div>
+<div class="note">Each insight you finish earns +20 XP toward the next level.</div>
+</div>
+</div>
+<div class="stats">
+<div class="stat"><div class="v" id="pRead">0</div><div class="k">Total Read</div></div>
+<div class="stat"><div class="v" id="pStreak">7</div><div class="k">Best Streak</div></div>
+<div class="stat"><div class="v" id="pMin">0</div><div class="k">Minutes</div></div>
+</div>
+<div class="sec-head"><div><h2>Achievements</h2></div></div>
+<div class="badges" id="badgeGrid"></div>
+<div style="height:20px"></div>
+</section>
+
+<!-- DEEP DIVE READER -->
+<section class="view" id="view-read"></section>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottomnav" id="bottomnav">
+<button class="nav-item active" data-nav="home">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+<span class="lb">Home</span>
+</button>
+<button class="nav-item" data-nav="discover">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+<span class="lb">Discover</span>
+</button>
+<button class="nav-item" data-nav="library">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5"/><path d="M4 5.5V19a2 2 0 0 0 2 2h14"/><path d="M4 5.5A2.5 2.5 0 0 0 6.5 8H20"/></svg>
+<span class="lb">Library</span>
+</button>
+<button class="nav-item" data-nav="profile">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+<span class="lb">Profile</span>
+</button>
+</nav>
+
+</div>
+
+<script>
+/* ============ DATA ============ */
+function grad(a,b){return `linear-gradient(140deg,${a},${b})`;}
+const CATS=[
+{id:'psychology',name:'Psychology',icon:'brain',count:128,bg:grad('#3d6b52','#22402f')},
+{id:'philosophy',name:'Philosophy',icon:'column',count:94,bg:grad('#4b6b78','#26414a')},
+{id:'productivity',name:'Productivity',icon:'bolt',count:112,bg:grad('#8a6d3b','#4a3a1f')},
+{id:'science',name:'Science',icon:'atom',count:87,bg:grad('#3b6b6b','#204040')},
+{id:'wellbeing',name:'Well-being',icon:'heart',count:76,bg:grad('#6b5b8a','#3a3050')},
+{id:'creativity',name:'Creativity',icon:'spark',count:63,bg:grad('#8a5b5b','#4a2f2f')},
+];
+const ICONS={
+brain:'<path d="M9 4a2.5 2.5 0 0 0-2.5 2.5A2.5 2.5 0 0 0 5 9a2.5 2.5 0 0 0 1 4.5V15a2 2 0 0 0 2 2"/><path d="M9 4a2 2 0 0 1 2 2v11"/><path d="M15 4a2.5 2.5 0 0 1 2.5 2.5A2.5 2.5 0 0 1 19 9a2.5 2.5 0 0 1-1 4.5V15a2 2 0 0 1-2 2"/><path d="M15 4a2 2 0 0 0-2 2v11"/>',
+column:'<path d="M4 8h16"/><path d="M6 8v9"/><path d="M10 8v9"/><path d="M14 8v9"/><path d="M18 8v9"/><path d="M4 21h16"/><path d="M5 8 12 4l7 4"/>',
+bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
+atom:'<circle cx="12" cy="12" r="1.5"/><ellipse cx="12" cy="12" rx="9" ry="3.5"/><ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="3.5" transform="rotate(120 12 12)"/>',
+heart:'<path d="M12 20s-7-4.5-7-9.5A3.5 3.5 0 0 1 12 7a3.5 3.5 0 0 1 7 3.5C19 15.5 12 20 12 20Z"/>',
+spark:'<path d="M12 3v4"/><path d="M12 17v4"/><path d="M3 12h4"/><path d="M17 12h4"/><path d="m6 6 2.5 2.5"/><path d="m15.5 15.5 2.5 2.5"/><path d="m18 6-2.5 2.5"/><path d="m8.5 15.5-2.5 2.5"/>'
+};
+let ARTICLES=[
+{id:'a1',cat:'psychology',catName:'Psychology',title:'The Quiet Power of Doing Nothing',author:'Dr. Elena Vasquez',role:'Cognitive Scientist',rt:6,bg:grad('#3d6b52','#22402f'),
+excerpt:'Idle moments are not wasted time — they are when the brain consolidates memory and sparks creativity.',
+takeaways:['The brain\'s "default mode network" activates during rest, driving insight.','Constant stimulation blocks memory consolidation.','Scheduled idleness improves problem-solving by up to 40%.'],
+body:'<p>We live in an age that treats boredom as a problem to be solved. The moment a queue forms or an elevator doors close, our hands reach for a glowing screen. Yet neuroscience suggests we may be quietly starving a part of ourselves that needs stillness to thrive.</p><p>When the mind appears to be doing nothing, it is in fact remarkably busy. The <em>default mode network</em> — a constellation of brain regions — lights up, weaving together memories, rehearsing the future, and making the unexpected connections we call creativity.</p><blockquote>Solitude is where the mind digests experience into understanding.</blockquote><h3>Reclaiming the pause</h3><p>The remedy is not more productivity but more permission. A ten-minute walk without headphones. A meal without a second screen. These small acts of intentional idleness allow the mind to catch up with the life it is living.</p><p>Try treating boredom not as an emergency but as an invitation. What surfaces in the silence is often the very thing you have been too busy to hear.</p>',
+cites:['Raichle, M. (2015). The Brain\'s Default Mode Network. Annual Review of Neuroscience.','Immordino-Yang, M. (2012). Rest Is Not Idleness. Perspectives on Psychological Science.']},
+{id:'a2',cat:'philosophy',catName:'Philosophy',title:'Stoicism for the Overwhelmed Mind',author:'Marcus Feld',role:'Philosophy Writer',rt:8,bg:grad('#4b6b78','#26414a'),
+excerpt:'The ancient Stoics built a practical toolkit for staying calm when the world feels out of control.',
+takeaways:['Separate what you control from what you do not.','Emotions follow judgments — change the judgment, change the feeling.','Daily reflection turns philosophy into habit.'],
+body:'<p>Nearly two thousand years ago, a Roman emperor wrote notes to himself each night. Those notes, never meant for publication, became the <em>Meditations</em> — a manual for keeping one\'s composure amid chaos.</p><p>The central Stoic move is deceptively simple: draw a line between what depends on you and what does not. Your effort, attention, and response are yours. The outcome, the opinions of others, and yesterday are not.</p><blockquote>You have power over your mind — not outside events. Realize this, and you will find strength.</blockquote><h3>A practice, not a mood</h3><p>Stoicism is less a feeling and more a rehearsal. Each morning, imagine the frictions the day might bring. Each evening, review where you acted with reason and where you were swept away. Over time, calm becomes less a lucky accident and more a trained response.</p>',
+cites:['Aurelius, M. Meditations. (c. 170 CE).','Pigliucci, M. (2017). How to Be a Stoic. Basic Books.']},
+{id:'a3',cat:'productivity',catName:'Productivity',title:'Why Deep Work Beats Busy Work',author:'Nadia Rahman',role:'Focus Researcher',rt:5,bg:grad('#8a6d3b','#4a3a1f'),
+excerpt:'A few hours of undistracted focus create more value than a full day of fragmented multitasking.',
+takeaways:['Context-switching can cost up to 23 minutes of refocus time.','Deep work compounds — skill grows fastest under full attention.','Protecting focus blocks matters more than working longer.'],
+body:'<p>The modern workday is a mosaic of interruptions: a message here, a notification there, a quick check that turns into twenty minutes. We mistake this motion for progress.</p><p>Research on attention shows that each switch carries a hidden tax. Returning to a demanding task after an interruption can take over twenty minutes to reach full focus again — time we rarely account for.</p><h3>Designing for depth</h3><p>The antidote is not heroic willpower but deliberate structure. Block a window. Silence the pings. Tell your mind that, for this hour, one thing matters. The output of such hours is not just more — it is qualitatively better.</p><blockquote>Clarity about what matters provides clarity about what does not.</blockquote>',
+cites:['Newport, C. (2016). Deep Work. Grand Central Publishing.','Mark, G. (2008). The Cost of Interrupted Work. UC Irvine.']},
+{id:'a4',cat:'science',catName:'Science',title:'How Sleep Rewrites Your Memory',author:'Dr. Owen Park',role:'Neuroscientist',rt:7,bg:grad('#3b6b6b','#204040'),
+excerpt:'Every night your brain replays the day, deciding what to keep and what to let fade.',
+takeaways:['Deep sleep transfers memories from short- to long-term storage.','Skipping sleep can cut learning capacity by 40%.','Dreams help integrate emotions with facts.'],
+body:'<p>Sleep can feel like lost time — hours subtracted from a busy life. But within that darkness, the brain performs some of its most important work.</p><p>During deep slow-wave sleep, the hippocampus replays the day\'s experiences to the cortex, gradually transferring fragile new memories into stable long-term storage. Skip that night, and much of what you learned simply does not stick.</p><blockquote>Sleep is the price the brain pays for learning.</blockquote><h3>The overnight editor</h3><p>Dreaming, meanwhile, appears to weave emotion and information together, softening the sharp edges of difficult experiences. In a very real sense, you wake up a slightly different — and better-informed — person than the one who fell asleep.</p>',
+cites:['Walker, M. (2017). Why We Sleep. Scribner.','Diekelmann, S. (2010). The Memory Function of Sleep. Nature Reviews Neuroscience.']},
+{id:'a5',cat:'wellbeing',catName:'Well-being',title:'The Science of Small Joys',author:'Priya Menon',role:'Positive Psychologist',rt:4,bg:grad('#6b5b8a','#3a3050'),
+excerpt:'Lasting happiness is built less from grand events and more from a steady accumulation of tiny pleasures.',
+takeaways:['Frequent small joys outweigh rare big highs.','Savoring an experience doubles its emotional benefit.','Gratitude rewires attention toward the positive.'],
+body:'<p>We tend to bank our happiness on milestones: the promotion, the trip, the milestone birthday. Yet studies of well-being reveal a quieter truth — it is the frequency of good moments, not their intensity, that shapes a contented life.</p><p>A warm cup of coffee. A message from an old friend. Sunlight on a wall. These are easy to overlook and easy to multiply.</p><h3>The art of savoring</h3><p>Psychologists find that <em>savoring</em> — deliberately stretching a good moment by paying attention to it — can double its emotional payoff. Happiness, it turns out, is less a destination and more a practice of noticing.</p><blockquote>Enjoy the little things, for one day you may look back and realize they were the big things.</blockquote>',
+cites:['Fredrickson, B. (2009). Positivity. Crown.','Bryant, F. (2007). Savoring: A New Model of Positive Experience.']},
+{id:'a6',cat:'creativity',catName:'Creativity',title:'Where Good Ideas Really Come From',author:'Theo Lindqvist',role:'Design Thinker',rt:6,bg:grad('#8a5b5b','#4a2f2f'),
+excerpt:'Breakthroughs rarely arrive as lightning bolts — they are slow hunches that collide and combine over time.',
+takeaways:['Ideas mature slowly as "slow hunches" before they connect.','Diverse inputs increase creative collisions.','Writing things down lets fragments find each other.'],
+body:'<p>The myth of the lone genius, struck by sudden inspiration, makes for good stories but poor science. Study the histories of real innovations and a different pattern emerges: the slow hunch.</p><p>Most good ideas begin as vague, incomplete intuitions that linger for months or years. They mature quietly, waiting for a second fragment to complete them.</p><blockquote>Chance favors the connected mind.</blockquote><h3>Building a commonplace</h3><p>This is why the habit of writing things down matters so much. A notebook — or a saved library of insights — becomes a space where half-formed thoughts can bump into each other until, one day, they click into something whole.</p>',
+cites:['Johnson, S. (2010). Where Good Ideas Come From. Riverhead.','Simonton, D. (1999). Origins of Genius. Oxford University Press.']},
+{id:'a7',cat:'psychology',catName:'Psychology',title:'The Paradox of Choice',author:'Dr. Elena Vasquez',role:'Cognitive Scientist',rt:5,bg:grad('#446b52','#25402f'),
+excerpt:'More options promise freedom but often deliver anxiety. Constraints can set the mind free.',
+takeaways:['Too many choices increase regret and paralysis.','"Good enough" beats "the best" for well-being.','Reducing options can raise satisfaction.'],
+body:'<p>Standing before a wall of forty jams, shoppers are less likely to buy than when offered six. This famous finding captures a modern paradox: abundance can quietly erode our contentment.</p><p>Each additional option raises the bar of expectation and the shadow of regret. We wonder whether the road not taken was better, and satisfaction leaks away.</p><h3>The freedom of enough</h3><p>Choosing "good enough" rather than "the best" is not settling — it is a strategy for peace. By setting criteria in advance and stopping when they are met, we trade the exhausting search for the best for the quiet pleasure of a decision made.</p><blockquote>Learning to choose is hard. Learning to choose well is harder.</blockquote>',
+cites:['Schwartz, B. (2004). The Paradox of Choice. Ecco.','Iyengar, S. (2000). When Choice Is Demotivating. JPSP.']},
+{id:'a8',cat:'productivity',catName:'Productivity',title:'The Two-Minute Rule',author:'Nadia Rahman',role:'Focus Researcher',rt:3,bg:grad('#7a6d3b','#403619'),
+excerpt:'The hardest part of any habit is starting. Shrink the beginning until it is impossible to refuse.',
+takeaways:['Make new habits take under two minutes to start.','Showing up matters more than intensity early on.','Identity forms through repeated small actions.'],
+body:'<p>We fail at new habits not because we lack discipline but because we begin too big. "Read more" becomes a nightly obligation to finish a chapter; soon it collapses under its own weight.</p><p>The two-minute rule flips the logic: shrink the habit until starting is trivial. "Read more" becomes "read one page." "Meditate" becomes "take one breath."</p><blockquote>A habit must be established before it can be improved.</blockquote><h3>Casting votes for who you are</h3><p>Each tiny repetition is a vote for the person you wish to become. Master the art of showing up, and the scale of the habit will take care of itself.</p>',
+cites:['Clear, J. (2018). Atomic Habits. Avery.','Fogg, BJ. (2019). Tiny Habits. Houghton Mifflin.']},
+];
+const RITUALS=[
+{id:'r1',t:'Morning Insight',s:'Read one insight with your coffee',ic:'sun',on:true},
+{id:'r2',t:'Midday Reflection',s:'A 2-minute mindful pause at noon',ic:'pause',on:false},
+{id:'r3',t:'Evening Wind-down',s:'Review a saved article before bed',ic:'moon',on:true},
+];
+const RIT_ICONS={
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/>',
+pause:'<rect x="7" y="6" width="3.5" height="12" rx="1"/><rect x="13.5" y="6" width="3.5" height="12" rx="1"/>',
+moon:'<path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z"/>'
+};
+const BADGES=[
+{n:'First Read',ic:'book',got:true},
+{n:'7-Day Streak',ic:'flame',got:true},
+{n:'Deep Diver',ic:'anchor',got:true},
+{n:'Curator',ic:'bookmark',got:false},
+{n:'Philosopher',ic:'column',got:false},
+{n:'Night Owl',ic:'moon',got:false},
+{n:'Polymath',ic:'star',got:false},
+{n:'Zen Master',ic:'leaf',got:false},
+];
+const BADGE_ICONS={
+book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15.5"/><path d="M4 5.5V19a2 2 0 0 0 2 2h13"/>',
+flame:'<path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.7-2.5C8 8.5 8 7 7 6c0 0 5 1 5 5 0-2 0-5 0-9Z"/>',
+anchor:'<circle cx="12" cy="5" r="2"/><path d="M12 7v13"/><path d="M5 12a7 7 0 0 0 14 0"/><path d="M5 12H3M21 12h-2"/>',
+bookmark:'<path d="M6 3h12v18l-6-4-6 4Z"/>',
+column:ICONS.column,
+moon:RIT_ICONS.moon,
+star:'<path d="M12 3l2.6 5.6L21 9.5l-4.5 4.3L17.5 21 12 17.8 6.5 21l1-7.2L3 9.5l6.4-.9Z"/>',
+leaf:'<path d="M4 20c8 0 16-4 16-16C12 4 4 8 4 20Z"/><path d="M4 20 14 10"/>'
+};
+
+/* ============ STATE ============ */
+const store={
+get(){try{return JSON.parse(localStorage.getItem('insight_v1'))||{}}catch(e){return{}}},
+set(s){localStorage.setItem('insight_v1',JSON.stringify(s))}
+};
+let S=Object.assign({saved:[],read:[],ritual:{r1:true,r2:false,r3:true},minutes:0},store.get());
+function save(){store.set(S)}
+let activeCat='all', currentArticle=null, lastView='home';
+
+/* ============ HELPERS ============ */
+const $=s=>document.querySelector(s);
+const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+function svg(inner,cls){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ${cls?`class="${cls}"`:''}>${inner}</svg>`;}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800);}
+function initials(name){return name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();}
+
+/* ============ TOPICS (dynamic filters) ============ */
+const PALETTE=[['#3d6b52','#22402f'],['#4b6b78','#26414a'],['#8a6d3b','#4a3a1f'],['#3b6b6b','#204040'],['#6b5b8a','#3a3050'],['#8a5b5b','#4a2f2f'],['#446b52','#25402f'],['#5b6b3b','#33401f'],['#7a4b6b','#40263a'],['#4b7a6b','#26403a']];
+function colorFor(i){const p=PALETTE[i%PALETTE.length];return grad(p[0],p[1]);}
+function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')||'t';}
+const CAT_Q={psychology:'Psikologi',philosophy:'Filsafat',productivity:'Produktivitas',science:'Sains',wellbeing:'Kesejahteraan',creativity:'Kreativitas'};
+const FALLBACK_TOPICS=['Psikologi','Filsafat','Sains','Teknologi','Sejarah','Seni','Musik','Sastra','Ekonomi','Politik','Kesehatan','Biologi','Fisika','Matematika','Astronomi','Geografi','Budaya','Olahraga','Agama','Bahasa','Lingkungan','Komputer','Kedokteran','Pendidikan','Film','Arsitektur','Kuliner','Antariksa'];
+let TOPICS=[];
+function buildTopics(names){
+const cleanNames=[];const seen=new Set();
+(names||[]).forEach(n=>{n=String(n).replace(/^Kategori:/,'').trim();const k=n.toLowerCase();if(n&&n.length<=22&&!/[0-9:]/.test(n)&&!seen.has(k)){seen.add(k);cleanNames.push(n);}});
+let base=cleanNames.length>=8?cleanNames:FALLBACK_TOPICS.slice();
+base=base.slice(0,26);
+const off=base.length?dayOffset()%base.length:0;
+base=base.slice(off).concat(base.slice(0,off));
+TOPICS=base.map((n,i)=>({id:slug(n),name:n,q:n,bg:colorFor(i)}));
+}
+function resolveCat(id){const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
+
+/* ============ RENDER: CHIPS ============ */
+function renderChips(){
+const wrap=$('#feedChips');if(!wrap)return;wrap.innerHTML='';
+const all=[{id:'all',name:'Untukmu'}].concat(TOPICS);
+all.forEach(c=>{
+const b=el('button','chip'+(activeCat===c.id?' active':''));
+b.textContent=c.name;
+b.onclick=()=>{activeCat=c.id;renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+wrap.appendChild(b);
+});
+}
+
+/* ============ CARDS ============ */
+function coverPH(a){return a&&a.image?`<div class="ph img" style="background-image:url('${String(a.image).replace(/'/g,'%27')}')"></div>`:`<div class="ph" style="background:${(a&&a.bg)||'var(--sage)'}"></div>`;}
+function cardHTML(a){
+const saved=S.saved.includes(a.id);
+const read=S.read.includes(a.id);
+return `<article class="card${read?' read':''}" data-id="${a.id}">
+<div class="thumb">${coverPH(a)}
+<span class="tag">${a.catName}</span>
+<span class="read-badge">${svg('<path d="M20 6 9 17l-5-5"/>')}Read</span>
+</div>
+<div class="body">
+<h3>${a.title}</h3>
+<p>${a.excerpt}</p>
+<div class="foot">
+<div class="info"><span class="avatar">${initials(a.author)}</span><span>${a.author.split(' ')[0]} ${a.author.split(' ')[1]||''}</span><span class="dot"></span><span>${a.rt} min</span></div>
+<button class="save-btn${saved?' saved':''}" data-save="${a.id}" aria-label="Save">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}</button>
+</div>
+</div>
+</article>`;
+}
+function stripFirst(body){const m=(body||'').match(/<p>([\s\S]*?)<\/p>/);let t=m?m[1]:'';return t.replace(/<[^>]+>/g,'');}
+function renderTrending(items){
+const t=(items&&items.length?items:ARTICLES).slice(0,5);
+$('#trendRail').innerHTML=t.map(a=>`<div class="trend-card" data-id="${a.id}">
+${coverPH(a)}<div class="grad"></div>
+<span class="kicker">${svg('<path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.7-2.5C8 8.5 8 7 7 6c0 0 5 1 5 5 0-2 0-5 0-9Z"/>')} Trending</span>
+<h4>${a.title}</h4><div class="m">${a.catName} \u00b7 ${a.rt} min</div>
+</div>`).join('');
+}
+function cardFullHTML(a){
+const saved=S.saved.includes(a.id);
+const read=S.read.includes(a.id);
+const intro=stripFirst(a.body)||a.excerpt;
+return `<article class="card-full${read?' read':''}" data-id="${a.id}">
+<div class="thumb-full">${coverPH(a)}
+<span class="tag">${a.catName}</span>
+<button class="save-btn${saved?' saved':''}" data-save="${a.id}" aria-label="Save">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}</button>
+</div>
+<div class="body">
+<h3>${a.title}</h3>
+<div class="metatop"><span class="avatar">${initials(a.author)}</span><span>${a.author}</span><span class="dot"></span><span>${a.rt} min baca</span>${read?`<span class="dot"></span><span class="readflag">${svg('<path d="M20 6 9 17l-5-5"/>')} Selesai</span>`:''}</div>
+<p class="intro">${intro}</p>
+<div class="mini-take">
+<h5>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h5>
+<ul>${a.takeaways.slice(0,2).map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
+</div>
+<button class="readmore" data-id="${a.id}">Baca selengkapnya ${svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>')}</button>
+</div>
+</article>`;
+}
+function toArticle(p,catId,catName,bg){
+const ex=(p.extract||'').replace(/\n{2,}/g,'\n').trim();const sents=sentences(ex);
+const img=(p.thumbnail&&p.thumbnail.source)||(p.original&&p.original.source)||'';
+return {id:'w_'+catId+'_'+p.pageid,cat:catId,catName:catName||catId,title:p.title,author:'Wikipedia',role:'Ensiklopedia bebas',rt:estRead(ex),bg:bg||'var(--sage)',image:img,excerpt:clean(sents[0]||ex).slice(0,170),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[clean(ex).slice(0,120)]).map(clean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. '+(p.canonicalurl||('https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.title).replace(/ /g,'_'))))]};
+}
+async function searchArticles(query,bg,name,offset,limit){
+const url=WIKI+'?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit='+(limit||8)+'&gsroffset='+(offset||0)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=3200&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
+const r=await fetch(url);if(!r.ok)throw new Error('wiki '+r.status);
+const j=await r.json();const pages=Object.values((j.query&&j.query.pages)||{});
+pages.sort((a,b)=>(a.index||0)-(b.index||0));
+return pages.filter(p=>p.extract&&clean(p.extract).length>200&&!/(dapat mengacu pada|dapat merujuk|disambigu)/i.test(p.extract)).map(p=>toArticle(p,slug(name||query),name||query,bg));
+}
+
+/* ============ FEED (with pagination) ============ */
+const feedCache={};
+function skeleton(){return Array(3).fill('<div class="card-full" style="pointer-events:none"><div class="thumb-full ph" style="background:var(--sage-tint)"></div><div class="body"><h3 style="color:var(--faint)">Memuat\u2026</h3><p class="intro" style="color:var(--faint)">Menyiapkan insight untukmu.</p></div></div>').join('');}
+function emptyMsg(m){return `<div class="empty">${svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')}<p>${m}</p></div>`;}
+function markSaved(){document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});}
+function renderMoreBtn(){
+const wrap=$('#loadMoreWrap');if(!wrap)return;
+const st=feedCache[activeCat];
+if(!st){wrap.innerHTML='';return;}
+if(st.loading){wrap.innerHTML='<button class="btn-more" disabled><span class="spin"></span> Memuat\u2026</button>';return;}
+if(st.done){wrap.innerHTML=st.items.length?'<div class="more-end">Kamu sudah di ujung \u2014 kembali lagi besok untuk yang baru.</div>':'';return;}
+wrap.innerHTML='<button class="btn-more" id="btnMore">Muat lebih banyak</button>';
+const b=$('#btnMore');if(b)b.onclick=()=>loadMore(false);
+}
+function renderFeed(){
+let st=feedCache[activeCat];
+if(!st){loadMore(true);st=feedCache[activeCat];}
+const items=(st&&st.items.length)?st.items:((activeCat==='all')?ARTICLES:[]);
+renderTrending(items.length?items:ARTICLES);
+const list=$('#feedList');
+if(list){
+if(st&&st.loading&&!st.items.length){list.innerHTML=skeleton();}
+else if(st&&!st.items.length&&st.done){list.innerHTML=emptyMsg('Belum ada insight untuk topik ini.');}
+else{list.innerHTML=(items.length?items:ARTICLES).map(cardFullHTML).join('');}
+}
+renderMoreBtn();markSaved();
+}
+async function loadMore(reset){
+const cat=activeCat;
+let st=feedCache[cat];
+if(reset||!st){st={items:[],offset:0,rot:0,done:false,loading:false};feedCache[cat]=st;}
+if(st.loading||st.done)return;
+st.loading=true;renderMoreBtn();
+try{
+let batch=[];
+if(cat==='all'){
+const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,bg:colorFor(i)}));
+const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
+batch=await searchArticles(t.q,t.bg,t.name,0,8);
+}else{
+const t=resolveCat(cat)||{q:cat,name:cat,bg:'var(--sage)'};
+batch=await searchArticles(t.q,t.bg,t.name,st.offset,8);
+}
+const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
+const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
+st.items=st.items.concat(fresh);
+st.offset+=8;
+if(cat!=='all'&&(batch.length<8||fresh.length===0))st.done=true;
+if(cat==='all'&&st.rot>=(TOPICS.length||8)*2)st.done=true;
+}catch(e){
+if(!st.items.length&&cat==='all')st.items=ARTICLES.slice();
+st.done=true;
+}
+st.loading=false;
+renderFeed();
+}
+
+/* ============ RENDER: DISCOVER ============ */
+function renderDiscover(){
+const g=$('#catGrid');
+g.innerHTML=CATS.map(c=>`<div class="cat-tile" data-cat="${c.id}" style="background:${c.bg}">
+<div class="grad"></div>
+<div class="ic">${svg(ICONS[c.icon])}</div>
+<div class="nm">${c.name}</div>
+<div class="ct">${c.count} insights</div>
+</div>`).join('');
+renderDiscList('');
+}
+function renderDiscList(q){
+const head=$('#discResultsHead').querySelector('h2');
+let items;
+if(q){
+const t=q.toLowerCase();
+items=ARTICLES.filter(a=>a.title.toLowerCase().includes(t)||a.excerpt.toLowerCase().includes(t)||a.catName.toLowerCase().includes(t)||a.author.toLowerCase().includes(t));
+head.textContent=items.length?`Results (${items.length})`:'No results';
+}else{items=ARTICLES.slice(0,5);head.textContent='Trending Now';}
+$('#discList').innerHTML=items.length?items.map(cardHTML).join(''):`<div class="empty">${svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')}<p>Try a different search term.</p></div>`;
+}
+
+/* ============ RENDER: LIBRARY ============ */
+function renderLibrary(){
+const readN=S.read.length, goal=10;
+$('#goalTxt').textContent=`${Math.min(readN,goal)} / ${goal} insights`;
+$('#goalBar').style.width=Math.min(100,readN/goal*100)+'%';
+$('#goalNote').textContent=readN>=goal?'Goal reached — beautiful work!':`${goal-readN} more to reach your weekly goal.`;
+$('#stRead').textContent=readN;
+$('#stSaved').textContent=S.saved.length;
+$('#stStreak').textContent=7;
+const rl=$('#ritualList');
+rl.innerHTML=RITUALS.map(r=>`<div class="ritual">
+<div class="ic">${svg(RIT_ICONS[r.ic])}</div>
+<div class="tx"><div class="t">${r.t}</div><div class="s">${r.s}</div></div>
+<div class="toggle${S.ritual[r.id]?' on':''}" data-rit="${r.id}"></div>
+</div>`).join('');
+const sv=ARTICLES.filter(a=>S.saved.includes(a.id));
+$('#savedList').innerHTML=sv.length?sv.map(cardHTML).join(''):`<div class="empty">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}<p>Tap the bookmark on any insight to save it here.</p></div>`;
+}
+
+/* ============ RENDER: PROFILE ============ */
+function renderProfile(){
+const readN=S.read.length;
+const xp=readN*20, level=4+Math.floor(xp/100), into=xp%100;
+$('#pRead').textContent=readN;
+$('#pMin').textContent=S.minutes;
+$('#pStreak').textContent=7;
+$('#xpTxt').textContent=`${into} / 100 XP`;
+$('#xpBar').style.width=into+'%';
+$('#pLevelLbl').textContent=`Level ${level} · Curious Mind`;
+$('#badgeGrid').innerHTML=BADGES.map(b=>`<div class="badge${b.got?'':' locked'}">
+<div class="medal">${svg(BADGE_ICONS[b.ic])}</div><div class="bn">${b.n}</div>
+</div>`).join('');
+}
+
+/* ============ READER ============ */
+function openArticle(id){
+const a=ARTICLES.find(x=>x.id===id);if(!a)return;
+currentArticle=a;
+const saved=S.saved.includes(a.id), read=S.read.includes(a.id);
+$('#view-read').innerHTML=`
+<div class="reader-hero">
+${coverPH(a)}<div class="grad"></div>
+<button class="reader-back" id="readerBack">${svg('<path d="M15 18 9 12l6-6"/>')}</button>
+</div>
+<div class="reader-body">
+<span class="reader-cat">${a.catName}</span>
+<h1>${a.title}</h1>
+<div class="reader-author">
+<div class="avatar">${initials(a.author)}</div>
+<div class="who"><div class="n">${a.author}</div><div class="r">${a.role}</div></div>
+<div class="rt">${a.rt} min read</div>
+</div>
+<div class="takeaways">
+<h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h4>
+<ul>${a.takeaways.map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
+</div>
+<div class="article">${a.body}</div>
+<div class="citations">
+<h4>Sources & Citations</h4>
+${a.cites.map((c,i)=>`<div class="cite"><span class="num">[${i+1}]</span><span>${c}</span></div>`).join('')}
+</div>
+</div>
+<div class="reader-actions">
+<button class="btn-primary${read?' done':''}" id="markRead">${read?svg('<path d="M20 6 9 17l-5-5"/>')+' Completed':'Mark as Read'}</button>
+<button class="btn-ghost${saved?' saved':''}" id="readerSave">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}</button>
+</div>`;
+$('#readerBack').onclick=()=>{showView(lastView,true);};
+$('#markRead').onclick=()=>toggleRead(a.id);
+$('#readerSave').onclick=()=>{toggleSave(a.id);const b=$('#readerSave');b.classList.toggle('saved',S.saved.includes(a.id));};
+showView('read',true,false);
+$('#scroll').scrollTo({top:0});
+}
+function toggleRead(id){
+if(!S.read.includes(id)){
+S.read.push(id);
+const a=ARTICLES.find(x=>x.id===id);S.minutes+=a?a.rt:0;
+save();toast('Nice — insight completed! +20 XP');
+const btn=$('#markRead');if(btn){btn.classList.add('done');btn.innerHTML=svg('<path d="M20 6 9 17l-5-5"/>')+' Completed';}
+}else{toast('Already read');}
+refreshAll();
+}
+function toggleSave(id){
+const i=S.saved.indexOf(id);
+if(i>=0){S.saved.splice(i,1);toast('Removed from saved');}
+else{S.saved.push(id);toast('Saved to your library');}
+save();refreshAll();
+}
+
+/* ============ NAV / VIEWS ============ */
+function showView(name,fromReader,updateNav=true){
+document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+$('#view-'+name).classList.add('active');
+if(name!=='read'){lastView=name;}
+if(updateNav && ['home','discover','library','profile'].includes(name)){
+document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.nav===name));
+}
+$('#scroll').scrollTo({top:0});
+if(name==='discover')renderDiscover();
+if(name==='library')renderLibrary();
+if(name==='profile')renderProfile();
+}
+function refreshAll(){renderFeed();if($('#view-library').classList.contains('active'))renderLibrary();if($('#view-profile').classList.contains('active'))renderProfile();if($('#view-discover').classList.contains('active')){const q=$('#searchInput').value;renderDiscList(q);}
+document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});
+}
+
+/* ============ EVENTS ============ */
+document.addEventListener('click',e=>{
+const sv=e.target.closest('[data-save]');
+if(sv){e.stopPropagation();toggleSave(sv.dataset.save);return;}
+const rm=e.target.closest('.readmore');
+if(rm){e.stopPropagation();openArticle(rm.dataset.id);return;}
+const fc=e.target.closest('[data-url]');
+if(fc){window.open(fc.dataset.url,'_blank','noopener');return;}
+const rit=e.target.closest('[data-rit]');
+if(rit){const id=rit.dataset.rit;S.ritual[id]=!S.ritual[id];save();rit.classList.toggle('on',S.ritual[id]);toast(S.ritual[id]?'Ritual on':'Ritual off');return;}
+const cat=e.target.closest('[data-cat]');
+if(cat){activeCat=cat.dataset.cat;showView('home');renderChips();renderFeed();return;}
+const card=e.target.closest('[data-id]');
+if(card){openArticle(card.dataset.id);return;}
+});
+document.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>showView(n.dataset.nav);});
+$('#searchTop').onclick=()=>{showView('discover');setTimeout(()=>$('#searchInput').focus(),100);};
+$('#searchInput').addEventListener('input',e=>renderDiscList(e.target.value.trim()));
+$('#refreshFeed').onclick=()=>{toast('Memuat konten terbaru\u2026');loadContent(true);$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+$('#streakChip').onclick=()=>{showView('library');};
+
+/* greeting */
+(function(){const h=new Date().getHours();$('#greet').textContent=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam';})();
+
+/* ============ LIVE CONTENT: Wikipedia (ID) + Quotable + Facts ============ */
+/* Search-driven discovery: the pool is dynamic (rotates daily), not a fixed title list. */
+const SEEDS={
+psychology:['psikologi','psikologi kognitif','emosi','memori','motivasi','bias kognitif','perilaku manusia','kepribadian'],
+philosophy:['filsafat','stoikisme','etika','eksistensialisme','logika','metafisika','moralitas','kebijaksanaan'],
+productivity:['produktivitas','manajemen waktu','kebiasaan','fokus','disiplin','penetapan tujuan','efisiensi'],
+science:['ilmu saraf','tidur','evolusi','fisika','genetika','kosmologi','otak manusia','mekanika kuantum'],
+wellbeing:['kebahagiaan','meditasi','kesehatan mental','kesadaran penuh','optimisme','ketahanan mental','kesejahteraan'],
+creativity:['kreativitas','inovasi','imajinasi','seni','desain','pemecahan masalah','musik']
+};
+const CONTENT_KEY='insight_content_v3';
+const WIKI='https://id.wikipedia.org/w/api.php';
+let DAILY_QUOTE=null;
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function dayOffset(){const d=new Date();return d.getFullYear()*372+d.getMonth()*31+d.getDate();}
+function estRead(t){const w=(t||'').trim().split(/\s+/).length;return Math.max(2,Math.round(w/180));}
+function clean(t){return (t||'').replace(/\s+/g,' ').trim();}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function sentences(t){const c=clean(t);const out=[];let buf='';for(let i=0;i<c.length;i++){buf+=c[i];if(/[.!?]/.test(c[i])&&(c[i+1]===' '||i===c.length-1)){if(buf.trim().length>30)out.push(buf.trim());buf='';}}if(buf.trim().length>30)out.push(buf.trim());return out;}
+function buildBody(plain){const lines=(plain||'').split('\n').map(s=>s.trim()).filter(Boolean);const out=[];lines.forEach((line,i)=>{const words=line.split(' ').length;const last=line[line.length-1];const heading=line.length<=52&&words<=7&&'.!?:,;)]'.indexOf(last)===-1&&!!lines[i+1];out.push(heading?('<h3>'+esc(line)+'</h3>'):('<p>'+esc(line)+'</p>'));});return out.join('')||('<p>'+esc(plain)+'</p>');}
+async function fetchCategory(cat){
+const seeds=SEEDS[cat.id];const q=seeds[dayOffset()%seeds.length];
+return await searchArticles(q,cat.bg,cat.name,0,10);
+}
+async function fetchQuote(){try{const r=await fetch('https://api.quotable.io/random?maxLength=160');if(!r.ok)return null;const q=await r.json();return {content:q.content,author:q.author};}catch(e){return null;}}
+function interleave(list){const seen=new Set();const byCat={};list.forEach(a=>{const k=(a.title||'').toLowerCase();if(seen.has(k))return;seen.add(k);(byCat[a.cat]=byCat[a.cat]||[]).push(a);});const cats=Object.keys(byCat);const out=[];let i=0,added=true;while(added){added=false;cats.forEach(c=>{if(byCat[c][i]){out.push(byCat[c][i]);added=true;}});i++;}return out;}
+function renderQuote(){const slot=$('#quoteSlot');if(!slot)return;if(!DAILY_QUOTE){slot.innerHTML='';return;}slot.innerHTML='<div class="quote-card"><div class="q-mark">\u201c</div><p class="q-text">'+esc(DAILY_QUOTE.content)+'</p><div class="q-auth">\u2014 '+esc(DAILY_QUOTE.author)+'</div></div>';}
+function onContentReady(updated){
+feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,done:false,loading:false};
+renderChips();renderFeed();renderQuote();
+if($('#view-library').classList.contains('active'))renderLibrary();
+if($('#view-discover').classList.contains('active'))renderDiscover();
+if(updated)toast('Konten insight diperbarui \u2728');
+}
+async function loadContent(force){
+try{
+const cached=JSON.parse(localStorage.getItem(CONTENT_KEY)||'null');
+if(!force&&cached&&cached.date===todayStr()&&cached.articles&&cached.articles.length>=6){ARTICLES=cached.articles;DAILY_QUOTE=cached.quote||null;onContentReady();return;}
+const results=await Promise.allSettled(CATS.map(fetchCategory));
+let live=[];results.forEach(r=>{if(r.status==='fulfilled')live=live.concat(r.value);});
+const quote=await fetchQuote();
+if(live.length>=6){live=interleave(live);ARTICLES=live;DAILY_QUOTE=quote;try{localStorage.setItem(CONTENT_KEY,JSON.stringify({date:todayStr(),articles:live,quote}));}catch(e){}onContentReady(true);}
+else{DAILY_QUOTE=quote;onContentReady();}
+}catch(e){onContentReady();}
+}
+
+/* ---- Dynamic topic filters (all Wikipedia topics) ---- */
+async function fetchTopics(){
+try{
+const url=WIKI+'?action=query&format=json&origin=*&list=categorymembers&cmtitle='+encodeURIComponent('Kategori:Topik utama')+'&cmlimit=100&cmtype=subcat';
+const r=await fetch(url);if(!r.ok)return null;
+const j=await r.json();const m=(j.query&&j.query.categorymembers)||[];
+return m.map(x=>x.title);
+}catch(e){return null;}
+}
+async function loadTopics(){
+let names=null;
+try{const c=JSON.parse(localStorage.getItem('insight_topics_v1')||'null');if(c&&c.date===todayStr()&&c.names&&c.names.length>=8)names=c.names;}catch(e){}
+if(!names){const f=await fetchTopics();if(f&&f.length>=8){names=f;try{localStorage.setItem('insight_topics_v1',JSON.stringify({date:todayStr(),names}));}catch(e){}}}
+buildTopics(names||FALLBACK_TOPICS);
+renderChips();
+}
+
+/* ---- Daily facts: Tahukah Kamu? ---- */
+const FACTS_KEY='insight_facts_v1';
+const FALLBACK_FACTS=[
+{year:'',text:'Otak manusia menghasilkan sekitar 12\u201325 watt listrik saat bangun \u2014 cukup untuk menyalakan lampu LED kecil.',url:'',thumb:'',title:''},
+{year:'',text:'Madu praktis tidak pernah basi; madu berusia ribuan tahun masih layak dikonsumsi.',url:'',thumb:'',title:''},
+{year:'',text:'Gurita memiliki tiga jantung dan darahnya berwarna biru.',url:'',thumb:'',title:''},
+{year:'',text:'Satu hari di planet Venus lebih panjang daripada satu tahunnya.',url:'',thumb:'',title:''},
+{year:'',text:'Menara Eiffel bisa bertambah tinggi sekitar 15 cm saat cuaca panas akibat pemuaian logam.',url:'',thumb:'',title:''}
+];
+let FACTS=[];
+async function fetchFacts(){
+const d=new Date();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
+const url='https://id.wikipedia.org/api/rest_v1/feed/onthisday/selected/'+mm+'/'+dd;
+const r=await fetch(url);if(!r.ok)throw new Error('facts '+r.status);
+const j=await r.json();const ev=(j.selected||j.events||[]);
+return ev.map(e=>{const pg=(e.pages&&e.pages[0])||{};return {year:e.year||'',text:clean(e.text),url:(pg.content_urls&&pg.content_urls.desktop&&pg.content_urls.desktop.page)||'',thumb:(pg.thumbnail&&pg.thumbnail.source)||'',title:pg.title||''};}).filter(f=>f.text&&f.text.length>10).slice(0,12);
+}
+function renderFacts(){
+const slot=$('#factsSlot');if(!slot)return;
+const facts=FACTS.length?FACTS:FALLBACK_FACTS;
+if(!facts.length){slot.innerHTML='';return;}
+slot.innerHTML='<div class="sec-head"><div><h2>Tahukah Kamu?</h2><div class="sub">Fakta menarik hari ini</div></div></div><div class="facts-rail" id="factsRail">'+facts.map(f=>{
+const meta=f.year?('Tahun '+f.year):'Fakta menarik';
+const img=f.thumb?`<div class="fact-thumb ph img" style="background-image:url('${String(f.thumb).replace(/'/g,'%27')}')"></div>`:'';
+const link=f.url?` data-url="${f.url}"`:'';
+return `<div class="fact-card"${link}>${img}<div class="fact-body"><span class="fact-kicker">${svg('<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2V17h6v-.4c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>')} ${meta}</span><p>${esc(f.text)}</p></div></div>`;
+}).join('')+'</div>';
+}
+async function loadFacts(){
+try{const c=JSON.parse(localStorage.getItem(FACTS_KEY)||'null');if(c&&c.date===todayStr()&&c.facts&&c.facts.length){FACTS=c.facts;renderFacts();return;}}catch(e){}
+try{const f=await fetchFacts();if(f&&f.length){FACTS=f;try{localStorage.setItem(FACTS_KEY,JSON.stringify({date:todayStr(),facts:f}));}catch(e){}renderFacts();return;}}catch(e){}
+FACTS=[];renderFacts();
+}
+
+/* ============ INIT ============ */
+feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,done:false,loading:false};
+buildTopics(FALLBACK_TOPICS);
+renderChips();renderFeed();renderFacts();
+loadTopics();loadContent();loadFacts();
+</script>
+</body>
+</html>
