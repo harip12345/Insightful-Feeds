@@ -708,14 +708,30 @@ function regArticles(list){(list||[]).forEach(a=>{if(a&&a.id)ARTICLE_INDEX[a.id]
 function skeleton(){return Array(3).fill('<div class="card-full" style="pointer-events:none"><div class="thumb-full ph" style="background:var(--sage-tint)"></div><div class="body"><h3 style="color:var(--faint)">Memuat\u2026</h3><p class="intro" style="color:var(--faint)">Menyiapkan insight untukmu.</p></div></div>').join('');}
 function emptyMsg(m){return `<div class="empty">${svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')}<p>${m}</p></div>`;}
 function markSaved(){document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});}
+let _feedTick=false;
+function feedVisible(){const l=$('#feedList');return l&&l.offsetParent!==null;}
+function onFeedScroll(){
+if(_feedTick)return;_feedTick=true;
+requestAnimationFrame(function(){_feedTick=false;
+if(!feedVisible())return;
+const sc=$('#scroll');if(!sc)return;
+const st=feedCache[activeCat];if(!st||st.loading||st.done)return;
+if(sc.scrollHeight-sc.scrollTop-sc.clientHeight<800)loadMore(false);
+});
+}
+function maybeAutoFill(){
+if(!feedVisible())return;
+const sc=$('#scroll');if(!sc)return;
+const st=feedCache[activeCat];if(!st||st.loading||st.done)return;
+if(sc.scrollHeight-sc.clientHeight<220)loadMore(false);
+}
 function renderMoreBtn(){
 const wrap=$('#loadMoreWrap');if(!wrap)return;
 const st=feedCache[activeCat];
 if(!st){wrap.innerHTML='';return;}
-if(st.loading){wrap.innerHTML='<button class="btn-more" disabled><span class="spin"></span> Memuat\u2026</button>';return;}
-if(st.done){wrap.innerHTML=st.items.length?'<div class="more-end">Kamu sudah di ujung \u2014 kembali lagi besok untuk yang baru.</div>':'';return;}
-wrap.innerHTML='<button class="btn-more" id="btnMore">Muat lebih banyak</button>';
-const b=$('#btnMore');if(b)b.onclick=()=>loadMore(false);
+if(st.loading){wrap.innerHTML='<div class="more-end"><span class="spin"></span> Memuat\u2026</div>';return;}
+if(st.done){wrap.innerHTML=st.items.length?'<div class="more-end">Kamu sudah di ujung \u2014 semua insight sudah tampil.</div>':'';return;}
+wrap.innerHTML='';
 }
 function renderFeed(){
 let st=feedCache[activeCat];
@@ -730,6 +746,7 @@ else if(st&&!st.items.length&&st.done){list.innerHTML=emptyMsg('Belum ada insigh
 else{list.innerHTML=(items.length?items:ARTICLES).map(cardFullHTML).join('');}
 }
 renderMoreBtn();markSaved();
+setTimeout(maybeAutoFill,160);
 }
 async function fetchByCategory(q,label,bg,cont,limit){
 let url=WIKI+'?action=query&format=json&origin=*&generator=categorymembers&gcmtitle='+encodeURIComponent('Kategori:'+q)+'&gcmnamespace=0&gcmtype=page&gcmlimit='+(limit||20)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=2600&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
@@ -1134,9 +1151,10 @@ return out;
 }
 
 /* ============ INIT ============ */
-feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,done:false,loading:false};
+feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,cont:null,catDone:false,done:false,loading:false};
 buildTopics(FALLBACK_TOPICS);
 renderChips();renderFeed();renderFacts();
+const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
 loadTopics();loadContent();loadFacts();
 </script>
 </body>
