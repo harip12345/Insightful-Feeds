@@ -337,9 +337,9 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 .gal-card{break-inside:avoid;margin:0 0 12px;position:relative;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow-sm);background:var(--sage-tint);display:block;transition:.16s}
 .gal-card:active{transform:scale(.98)}
 .gal-img{width:100%;display:block;background:var(--sage-tint);min-height:110px}
-.gal-cap{position:absolute;left:0;right:0;bottom:0;padding:28px 12px 11px;background:linear-gradient(to top,rgba(18,28,22,.86),rgba(18,28,22,.06) 78%,transparent);color:#fff}
-.gal-tt{display:block;font-family:var(--serif);font-size:14.5px;font-weight:600;line-height:1.25}
-.gal-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:11px;opacity:.88;line-height:1.32;margin-top:2px}
+.gal-cap{position:absolute;left:0;right:0;bottom:0;padding:15px 9px 7px;background:linear-gradient(to top,rgba(18,28,22,.76),rgba(18,28,22,.03) 66%,transparent);color:#fff}
+.gal-tt{display:block;font-family:var(--serif);font-size:11.5px;font-weight:600;line-height:1.2}
+.gal-sub{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;font-size:9.5px;opacity:.8;line-height:1.3;margin-top:1px}
 .gal-skel{break-inside:avoid;margin:0 0 12px;border-radius:16px;background:linear-gradient(100deg,var(--sage-tint),var(--sage-tint-2),var(--sage-tint));background-size:200% 100%;animation:shimmer 1.4s infinite}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .load-more{display:flex;justify-content:center;padding:2px 20px 26px}
@@ -1087,9 +1087,10 @@ save();refreshAll();
 }
 
 /* ============ GALERI ============ */
-let galleryTheme='pemandangan';
+let galleryTheme='semua';
 const galleryCache={};
 const GALLERY_THEMES=[
+{id:'semua',name:'Semua',all:true},
 {id:'pemandangan',name:'Pemandangan',queries:['gunung di Indonesia','danau di Indonesia','pantai di Indonesia','air terjun di Indonesia','pemandangan alam']},
 {id:'alam',name:'Alam',queries:['taman nasional di Indonesia','hutan di Indonesia','flora Indonesia','bunga','pohon']},
 {id:'candi',name:'Candi & Sejarah',queries:['candi di Indonesia','situs sejarah di Indonesia','kerajaan di Indonesia','prasasti','peninggalan sejarah']},
@@ -1100,6 +1101,7 @@ const GALLERY_THEMES=[
 {id:'arsitektur',name:'Arsitektur',queries:['arsitektur','masjid terkenal','gereja terkenal','istana','jembatan terkenal']}
 ];
 function galleryCfg(){return GALLERY_THEMES.find(t=>t.id===galleryTheme)||GALLERY_THEMES[0];}
+function galleryQueries(cfg){if(!cfg.all)return cfg.queries;const themes=GALLERY_THEMES.filter(t=>!t.all);const out=[];let more=true,i=0;while(more){more=false;themes.forEach(t=>{if(t.queries&&t.queries[i]){out.push(t.queries[i]);more=true;}});i++;}return out;}
 function gallerySkeleton(){return [168,224,150,196,176,210].map(h=>`<div class="gal-skel" style="height:${h}px"></div>`).join('');}
 function galleryCardHTML(a){
 const img=String(a.image).replace(/'/g,'%27').replace(/"/g,'%22');
@@ -1135,6 +1137,7 @@ markSaved();
 }
 async function loadGallery(reset){
 const cfg=galleryCfg();
+const queries=galleryQueries(cfg);
 let st=galleryCache[cfg.id];
 if(reset||!st){st={items:[],loading:false,done:false,qi:0,offset:0};galleryCache[cfg.id]=st;}
 if(st.loading||st.done)return;
@@ -1142,9 +1145,9 @@ st.loading=true;renderGallery();
 try{
 const target=st.items.length+12;
 let rounds=0;
-while(st.items.length<target&&st.qi<cfg.queries.length&&rounds<10){
+while(st.items.length<target&&st.qi<queries.length&&rounds<10){
 rounds++;
-const q=cfg.queries[st.qi];
+const q=queries[st.qi];
 let arts=[];
 try{arts=await searchArticles(q,'var(--sage)',cfg.name,st.offset,40);}catch(e){arts=[];}
 if(arts.length<40){st.qi++;st.offset=0;}else{st.offset+=40;}
@@ -1152,7 +1155,7 @@ const seen={};st.items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()
 arts.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;st.items.push(a);}});
 }
 regArticles(st.items);
-if(st.qi>=cfg.queries.length)st.done=true;
+if(st.qi>=queries.length)st.done=true;
 }catch(e){st.done=true;}
 st.loading=false;renderGallery();
 }
