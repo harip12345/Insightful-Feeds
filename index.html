@@ -1117,7 +1117,7 @@ function gallerySkeleton(){const H=[168,150,196,176,224,210,160,190];let a='',b=
 function galThumb(url,w){if(!url)return url;if(/upload\.wikimedia\.org\/.+\/thumb\//.test(url)){return url.replace(/\/(\d+)px-([^\/]*)$/,'/'+w+'px-$2');}return url;}
 function galRatio(a){if(a&&a.iw&&a.ih){return Math.max(0.62,Math.min(1.5,a.iw/a.ih));}const s=String((a&&a.id)||'');let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return [0.72,0.82,0.94,1.06,1.2][h%5];}
 function galleryCardHTML(a,ratio){
-const img=galThumb(String(a.image),520).replace(/'/g,'%27').replace(/"/g,'%22');
+const img=String(a.image).replace(/'/g,'%27').replace(/"/g,'%22');
 const sub=esc((a.excerpt||'').slice(0,90));
 const ar=(ratio||galRatio(a)).toFixed(3);
 return `<figure class="gal-card" data-id="${a.id}" style="aspect-ratio:${ar}"><img class="gal-img" src="${img}" alt="${esc(a.title)}" loading="lazy" decoding="async" onerror="var c=this.closest('.gal-card');if(c)c.remove()"><figcaption class="gal-cap"><span class="gal-tt">${esc(a.title)}</span>${sub?`<span class="gal-sub">${sub}</span>`:''}</figcaption></figure>`;
@@ -1177,7 +1177,7 @@ if(!tk.length)tk.push(clean(ex||o.title||'').slice(0,120)||'Gambar dari '+ (o.au
 return {id:o.id,cat:o.cat||'ext',catName:o.catName||'Galeri',title:o.title||'Tanpa judul',wikiTitle:o.title||'',kind:'image',full:true,author:o.author||'Sumber',role:o.role||'Sumber gambar',rt:Math.max(2,estRead(ex)),bg:'var(--sage)',image:o.image,iw:o.iw||0,ih:o.ih||0,excerpt:(ex||o.title||'').slice(0,170),takeaways:tk,body:ex?('<p>'+esc(ex)+'</p>'):('<p>'+esc(o.title||'')+'</p>'),cites:[o.cite||o.url||o.author||'']};
 }
 async function fetchCommons(query,catName,limit){
-const url='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit='+(limit||30)+'&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500';
+const url='https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=6&gsrlimit='+(limit||30)+'&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=800';
 const r=await fetch(url);if(!r.ok)throw new Error('commons '+r.status);
 const j=await r.json();const pages=Object.values((j.query&&j.query.pages)||{});
 const out=[];
@@ -1198,7 +1198,7 @@ const url='https://api.artic.edu/api/v1/artworks/search?q='+encodeURIComponent(q
 const r=await fetch(url);if(!r.ok)throw new Error('aic '+r.status);
 const j=await r.json();const data=j.data||[];
 const out=[];
-data.forEach(d=>{if(!d.image_id)return;const img='https://www.artic.edu/iiif/2/'+d.image_id+'/full/500,/0/default.jpg';const alt=(d.thumbnail&&d.thumbnail.alt_text)||'';const desc=[d.artist_display,d.date_display,d.medium_display].filter(Boolean).join(' \u00b7 ')||alt;out.push(extArticle({id:'aic_'+d.id,catName:catName,title:d.title||'Karya Seni',image:img,iw:(d.thumbnail&&d.thumbnail.width)||0,ih:(d.thumbnail&&d.thumbnail.height)||0,desc:clean(desc),author:'Art Institute of Chicago',role:'Museum seni',url:'https://www.artic.edu/artworks/'+d.id,cite:(d.title||'Artwork')+'. Art Institute of Chicago.'}));});
+data.forEach(d=>{if(!d.image_id)return;const img='https://www.artic.edu/iiif/2/'+d.image_id+'/full/843,/0/default.jpg';const alt=(d.thumbnail&&d.thumbnail.alt_text)||'';const desc=[d.artist_display,d.date_display,d.medium_display].filter(Boolean).join(' \u00b7 ')||alt;out.push(extArticle({id:'aic_'+d.id,catName:catName,title:d.title||'Karya Seni',image:img,iw:(d.thumbnail&&d.thumbnail.width)||0,ih:(d.thumbnail&&d.thumbnail.height)||0,desc:clean(desc),author:'Art Institute of Chicago',role:'Museum seni',url:'https://www.artic.edu/artworks/'+d.id,cite:(d.title||'Artwork')+'. Art Institute of Chicago.'}));});
 return out;
 }
 async function fetchINat(query,catName,limit){
