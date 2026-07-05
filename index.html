@@ -105,6 +105,12 @@ box-shadow:0 5px 13px rgba(45,79,61,.30),inset 0 1px 0 rgba(255,255,255,.22);
 .chips{display:flex;gap:9px;overflow-x:auto;padding:16px 0 6px 20px;scrollbar-width:none;scroll-padding-left:20px}
 .chips::after{content:"";flex:0 0 20px;align-self:stretch}
 .chips::-webkit-scrollbar{display:none}
+.subchips{display:flex;gap:7px;overflow-x:auto;padding:0 20px 10px;scrollbar-width:none}
+.subchips::-webkit-scrollbar{display:none}
+.subchips::after{content:"";flex:0 0 20px}
+.subchip{flex:none;padding:6px 13px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap}
+.subchip:active{transform:scale(.96)}
+.subchip.active{background:var(--sage);color:#fff;border-color:var(--sage)}
 .chip{
 flex-shrink:0;padding:9px 16px;border-radius:999px;border:1px solid var(--border);
 background:var(--paper);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;
@@ -377,6 +383,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <div class="trend-rail" id="trendRail"></div>
 
 <div class="sec-head"><div><h2>Your Daily Feed</h2><div class="sub">Baca langsung, tanpa terburu-buru</div></div><a id="refreshFeed">Refresh</a></div>
+<div class="subchips" id="subChips" style="display:none"></div>
 <div class="feed" id="feedList"></div>
 <div class="loadmore-wrap" id="loadMoreWrap"></div>
 </section>
@@ -627,13 +634,34 @@ TOPICS=base.map((t,i)=>({id:slug(t.q),name:t.q,q:t.q,label:t.label||t.q,bg:color
 function resolveCat(id){const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
 
 /* ============ RENDER: CHIPS ============ */
+let activeSub='all';
+const SUBFILTERS=[{id:'all',label:'Semua'},{id:'tokoh',label:'🧑 Tokoh'},{id:'tempat',label:'📍 Tempat'},{id:'organisasi',label:'🏛️ Organisasi'},{id:'karya',label:'🎬 Karya'},{id:'peristiwa',label:'📅 Peristiwa'},{id:'konsep',label:'💡 Konsep'}];
+function isTopicCat(id){return id!=='all'&&id!=='research'&&id!=='art';}
 function renderChips(){
 const wrap=$('#feedChips');if(!wrap)return;wrap.innerHTML='';
 const all=[{id:'all',name:'Untukmu'},{id:'research',name:'🔬 Riset'},{id:'art',name:'🎨 Galeri Seni'}].concat(TOPICS);
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
 b.textContent=c.label||c.name;
-b.onclick=()=>{activeCat=c.id;renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+b.onclick=()=>{activeCat=c.id;activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+wrap.appendChild(b);
+});
+renderSubChips();
+}
+function subCounts(){
+const st=feedCache[activeCat];const items=(st&&st.items)?st.items:[];
+const m={};items.forEach(a=>{const k=a.kind||'konsep';m[k]=(m[k]||0)+1;});return m;
+}
+function renderSubChips(){
+const wrap=$('#subChips');if(!wrap)return;
+if(!isTopicCat(activeCat)){wrap.style.display='none';wrap.innerHTML='';return;}
+wrap.style.display='flex';
+const counts=subCounts();wrap.innerHTML='';
+SUBFILTERS.forEach(s=>{
+if(s.id!=='all'&&!counts[s.id])return;
+const b=el('button','subchip'+(activeSub===s.id?' active':''));
+b.textContent=s.label+(s.id!=='all'&&counts[s.id]?(' '+counts[s.id]):'');
+b.onclick=()=>{activeSub=s.id;renderSubChips();renderFeed();};
 wrap.appendChild(b);
 });
 }
@@ -688,10 +716,19 @@ return `<article class="card-full${read?' read':''}" data-id="${a.id}">
 </div>
 </article>`;
 }
+function classifyKind(title,ex){
+const t=clean(ex).slice(0,260).toLowerCase();const ti=(title||'').toLowerCase();
+if(/\(lahir/.test(t)||/adalah seorang|adalah tokoh|adalah pemain|adalah penyanyi|adalah aktor|adalah aktris|adalah politikus|adalah ilmuwan|adalah penulis|adalah raja|adalah ratu|adalah presiden|adalah sutradara|adalah komponis|adalah filsuf|adalah pelukis|adalah pemeran/.test(t)||(/\blahir\b/.test(t)&&/\bmeninggal\b/.test(t)))return 'tokoh';
+if(/adalah (sebuah |)(kota|negara|provinsi|kabupaten|kecamatan|desa|kelurahan|pulau|kepulauan|gunung|sungai|danau|benua|wilayah|daerah|kawasan|distrik)/.test(t))return 'tempat';
+if(/adalah (sebuah |)(organisasi|perusahaan|lembaga|universitas|institut|sekolah|partai|klub|tim|asosiasi|badan|kelompok|band|yayasan|maskapai)/.test(t))return 'organisasi';
+if(/adalah (sebuah |)(film|buku|novel|lagu|album|permainan|video game|serial|acara|majalah|surat kabar|lukisan|komik|manga|anime|drama|puisi|karya)/.test(t))return 'karya';
+if(/adalah (sebuah |)(peristiwa|perang|pertempuran|revolusi|bencana|tragedi|konflik|pemberontakan|festival|turnamen|kompetisi|kejuaraan|perjanjian|wabah|pandemi)/.test(t)||/^perang |^pertempuran |^revolusi /.test(ti))return 'peristiwa';
+return 'konsep';
+}
 function toArticle(p,catId,catName,bg){
 const ex=(p.extract||'').replace(/\n{2,}/g,'\n').trim();const sents=sentences(ex);
 const img=(p.thumbnail&&p.thumbnail.source)||(p.original&&p.original.source)||'';
-return {id:'w_'+catId+'_'+p.pageid,cat:catId,catName:catName||catId,title:p.title,author:'Wikipedia',role:'Ensiklopedia bebas',rt:estRead(ex),bg:bg||'var(--sage)',image:img,excerpt:clean(sents[0]||ex).slice(0,170),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[clean(ex).slice(0,120)]).map(clean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. '+(p.canonicalurl||('https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.title).replace(/ /g,'_'))))]};
+return {id:'w_'+catId+'_'+p.pageid,cat:catId,catName:catName||catId,title:p.title,wikiTitle:p.title,kind:classifyKind(p.title,ex),full:false,author:'Wikipedia',role:'Ensiklopedia bebas',rt:estRead(ex),bg:bg||'var(--sage)',image:img,excerpt:clean(sents[0]||ex).slice(0,170),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[clean(ex).slice(0,120)]).map(clean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. '+(p.canonicalurl||('https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.title).replace(/ /g,'_'))))]};
 }
 async function searchArticles(query,bg,name,offset,limit){
 const url=WIKI+'?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit='+(limit||12)+'&gsroffset='+(offset||0)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=3200&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
@@ -739,11 +776,16 @@ if(!st){loadMore(true);st=feedCache[activeCat];}
 const items=(st&&st.items.length)?st.items:((activeCat==='all')?ARTICLES:[]);
 regArticles(items);regArticles(ARTICLES);
 renderTrending(items.length?items:ARTICLES);
+renderSubChips();
+const sub=(isTopicCat(activeCat)&&activeSub!=='all');
+const shown=sub?items.filter(a=>(a.kind||'konsep')===activeSub):items;
 const list=$('#feedList');
 if(list){
 if(st&&st.loading&&!st.items.length){list.innerHTML=skeleton();}
 else if(st&&!st.items.length&&st.done){list.innerHTML=emptyMsg('Belum ada insight untuk topik ini.');}
-else{list.innerHTML=(items.length?items:ARTICLES).map(cardFullHTML).join('');}
+else if(sub&&!shown.length&&st&&st.done){list.innerHTML=emptyMsg('Belum ada insight untuk sub-kategori ini.');}
+else if(sub&&!shown.length){list.innerHTML=skeleton();}
+else{list.innerHTML=(shown.length?shown:(items.length?items:ARTICLES)).map(cardFullHTML).join('');}
 }
 renderMoreBtn();markSaved();
 setTimeout(maybeAutoFill,160);
@@ -871,6 +913,18 @@ $('#badgeGrid').innerHTML=BADGES.map(b=>`<div class="badge${b.got?'':' locked'}"
 }
 
 /* ============ READER ============ */
+async function fetchFullArticle(a){
+if(!a||a.full||!/^w_/.test(a.id||''))return;
+try{
+const url=WIKI+'?action=query&format=json&origin=*&prop=extracts&explaintext=1&exsectionformat=plain&redirects=1&titles='+encodeURIComponent(a.wikiTitle||a.title);
+const r=await fetch(url);if(!r.ok)return;
+const j=await r.json();const pages=Object.values((j.query&&j.query.pages)||{});
+const p=pages[0];if(!p||!p.extract)return;
+const ex=p.extract.replace(/\n{2,}/g,'\n').trim();
+if(ex.length>60){a.body=buildBody(ex);a.rt=estRead(ex);}
+a.full=true;
+}catch(e){}
+}
 function openArticle(id){
 const a=ARTICLE_INDEX[id]||ARTICLES.find(x=>x.id===id);if(!a)return;
 currentArticle=a;
@@ -907,6 +961,11 @@ $('#markRead').onclick=()=>toggleRead(a.id);
 $('#readerSave').onclick=()=>{toggleSave(a.id);const b=$('#readerSave');b.classList.toggle('saved',S.saved.includes(a.id));};
 showView('read',true,false);
 $('#scroll').scrollTo({top:0});
+if(a&&!a.full&&/^w_/.test(a.id||'')){
+const art=$('#view-read .article');
+if(art)art.insertAdjacentHTML('beforeend','<p class="more-end"><span class="spin"></span> Memuat teks lengkap\u2026</p>');
+fetchFullArticle(a).then(()=>{if(currentArticle===a){const a2=$('#view-read .article');if(a2)a2.innerHTML=a.body;const rt=$('#view-read .rt');if(rt)rt.textContent=a.rt+' min read';}});
+}
 }
 function toggleRead(id){
 if(!S.read.includes(id)){
