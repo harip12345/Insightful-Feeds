@@ -812,11 +812,17 @@ function emptyMsg(m){return `<div class="empty">${svg('<circle cx="11" cy="11" r
 function markSaved(){document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});}
 let _feedTick=false;
 function feedVisible(){const l=$('#feedList');return l&&l.offsetParent!==null;}
+function galleryVisible(){const v=document.getElementById('view-gallery');return v&&v.classList.contains('active');}
 function onFeedScroll(){
 if(_feedTick)return;_feedTick=true;
 requestAnimationFrame(function(){_feedTick=false;
-if(!feedVisible())return;
 const sc=$('#scroll');if(!sc)return;
+if(galleryVisible()){
+const gst=galleryCache[galleryTheme];
+if(gst&&!gst.loading&&!gst.done&&sc.scrollHeight-sc.scrollTop-sc.clientHeight<900)loadGallery(false);
+return;
+}
+if(!feedVisible())return;
 const st=feedCache[activeCat];if(!st||st.loading||st.done)return;
 if(sc.scrollHeight-sc.scrollTop-sc.clientHeight<800)loadMore(false);
 });
@@ -1128,12 +1134,18 @@ else if(!st.items.length&&st.done){grid.innerHTML=emptyMsg('Belum ada gambar unt
 else{grid.innerHTML=st.items.map(galleryCardHTML).join('');}
 const more=$('#galleryMore');
 if(more){
-if(st.loading&&st.items.length)more.innerHTML='<div class="more-end"><span class="spin"></span> Memuat\u2026</div>';
+if(st.loading)more.innerHTML='<div class="more-end"><span class="spin"></span> Memuat\u2026</div>';
 else if(st.done)more.innerHTML=st.items.length?'<div class="more-end">Semua gambar sudah tampil.</div>':'';
-else more.innerHTML='<button class="load-more-btn" id="galMoreBtn">Muat lebih banyak</button>';
-const b=$('#galMoreBtn');if(b)b.onclick=()=>loadGallery(false);
+else more.innerHTML='';
 }
 markSaved();
+maybeFillGallery();
+}
+function maybeFillGallery(){
+if(!galleryVisible())return;
+const sc=$('#scroll');if(!sc)return;
+const st=galleryCache[galleryTheme];if(!st||st.loading||st.done)return;
+if(sc.scrollHeight-sc.clientHeight<260)loadGallery(false);
 }
 async function loadGallery(reset){
 const cfg=galleryCfg();
