@@ -601,7 +601,7 @@ const CURATED_TOPICS=[
 {q:'Astronomi',label:'🌌 Astronomi'},
 {q:'Luar angkasa',label:'🚀 Luar Angkasa'},
 {q:'Mitologi',label:'🐉 Mitologi'},
-{q:'Psikologi',label:'🧠 Psikologi'},
+{q:'Psikologi',label:'    Psikologi'},
 {q:'Filsafat',label:'📜 Filsafat'},
 {q:'Sejarah',label:'🏛️ Sejarah'},
 {q:'Fisika',label:'⚛️ Fisika'},
@@ -1153,9 +1153,23 @@ const FALLBACK_FACTS=[
 {year:'',text:'Satu hari di planet Venus lebih panjang daripada satu tahunnya.',url:'',thumb:'',title:''},
 {year:'',text:'Menara Eiffel bisa bertambah tinggi sekitar 15 cm saat cuaca panas akibat pemuaian logam.',url:'',thumb:'',title:''}
 ];
+const FALLBACK_NEWS=[
+{year:'',text:'Kecerdasan buatan generatif mengubah cara manusia bekerja, belajar, dan berkarya.',url:'https://id.wikipedia.org/wiki/Kecerdasan_buatan_generatif',thumb:'',title:'Kecerdasan buatan generatif'},
+{year:'',text:'Dunia mempercepat transisi menuju energi terbarukan untuk menekan perubahan iklim.',url:'https://id.wikipedia.org/wiki/Energi_terbarukan',thumb:'',title:'Energi terbarukan'},
+{year:'',text:'Teleskop Luar Angkasa James Webb mengungkap citra alam semesta paling awal.',url:'https://id.wikipedia.org/wiki/Teleskop_Luar_Angkasa_James_Webb',thumb:'',title:'Teleskop Luar Angkasa James Webb'},
+{year:'',text:'Eksplorasi antariksa memasuki era roket yang dapat digunakan kembali.',url:'https://id.wikipedia.org/wiki/Penerbangan_antariksa',thumb:'',title:'Penerbangan antariksa'}
+];
+const FALLBACK_HISTORY=[
+{year:'1945',text:'Proklamasi Kemerdekaan Indonesia dibacakan oleh Soekarno dan Mohammad Hatta.',url:'https://id.wikipedia.org/wiki/Proklamasi_Kemerdekaan_Indonesia',thumb:'',title:'Proklamasi Kemerdekaan Indonesia'},
+{year:'1928',text:'Sumpah Pemuda diikrarkan: satu tanah air, satu bangsa, satu bahasa.',url:'https://id.wikipedia.org/wiki/Sumpah_Pemuda',thumb:'',title:'Sumpah Pemuda'},
+{year:'1908',text:'Berdirinya Budi Utomo menandai kebangkitan nasional Indonesia.',url:'https://id.wikipedia.org/wiki/Budi_Utomo',thumb:'',title:'Budi Utomo'},
+{year:'1969',text:'Misi Apollo 11 membawa manusia pertama mendarat di Bulan.',url:'https://id.wikipedia.org/wiki/Apollo_11',thumb:'',title:'Apollo 11'},
+{year:'1945',text:'Pertempuran Surabaya berkobar, kelak diperingati sebagai Hari Pahlawan.',url:'https://id.wikipedia.org/wiki/Pertempuran_Surabaya',thumb:'',title:'Pertempuran Surabaya'},
+{year:'1876',text:'Alexander Graham Bell mematenkan pesawat telepon.',url:'https://id.wikipedia.org/wiki/Telepon',thumb:'',title:'Telepon'}
+];
 let FACTS=[];
-let NEWS=[];
-let HISTORY=[];
+let NEWS=null;
+let HISTORY=null;
 let factsShown=8;
 const NEWS_KEY='insight_news_v1';
 const HISTORY_KEY='insight_history_v1';
@@ -1192,16 +1206,19 @@ const body='<p>'+esc(f.text||'')+'</p>'+(f.url?('<p><a href="'+f.url+'" target="
 const a={id:id,cat:'fakta',catName:catName,title:(f.title||(f.text||'').slice(0,70)),wikiTitle:f.title||'',kind:'konsep',full:!hasPage,author:'Wikipedia',role:'Ensiklopedia bebas',rt:2,bg:'linear-gradient(135deg,#2d4f3d,#1d3528)',image:f.thumb||'',excerpt:(f.text||'').slice(0,180),takeaways:[f.text].filter(Boolean),body:body,cites:['Wikipedia \u2014 Ensiklopedia bebas. '+(f.url||'')].filter(Boolean),url:f.url||'',year:f.year||''};
 ARTICLE_INDEX[id]=a;return a;
 }
+function railSkeleton(){return Array(3).fill('<div class="fact-card" style="pointer-events:none;opacity:.55"><div class="fact-body"><span class="fact-kicker" style="color:var(--faint)">Memuat\u2026</span><p style="color:var(--faint)">Menyiapkan konten untukmu\u2026</p></div></div>').join('');}
 function renderNews(){
 const slot=$('#newsSlot');if(!slot)return;
-if(!NEWS.length){slot.innerHTML='';return;}
-const cards=NEWS.slice(0,12).map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>','Peristiwa terkini',f.text);}).join('');
-slot.innerHTML='<div class="sec-head"><div><h2>Peristiwa Terkini</h2><div class="sub">Kabar dunia terbaru dari Wikipedia</div></div></div><div class="facts-rail">'+cards+'</div>';
+const loading=(NEWS===null);
+const items=loading?[]:((NEWS&&NEWS.length)?NEWS:FALLBACK_NEWS);
+const cards=loading?railSkeleton():items.slice(0,12).map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>','Peristiwa terkini',f.text);}).join('');
+slot.innerHTML='<div class="sec-head"><div><h2>Peristiwa Terkini</h2><div class="sub">Kabar &amp; sorotan dunia</div></div></div><div class="facts-rail">'+cards+'</div>';
 }
 function renderHistory(){
 const slot=$('#historySlot');if(!slot)return;
-if(!HISTORY.length){slot.innerHTML='';return;}
-const cards=HISTORY.slice(0,18).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);return railCard(a,'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>',(f.year?('Tahun '+f.year):'Hari ini'),f.text);}).join('');
+const loading=(HISTORY===null);
+const items=loading?[]:((HISTORY&&HISTORY.length)?HISTORY:FALLBACK_HISTORY);
+const cards=loading?railSkeleton():items.slice(0,18).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);return railCard(a,'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>',(f.year?('Tahun '+f.year):'Hari ini'),f.text);}).join('');
 slot.innerHTML='<div class="sec-head"><div><h2>Hari Ini dalam Sejarah</h2><div class="sub">Peristiwa penting pada tanggal ini</div></div></div><div class="facts-rail">'+cards+'</div>';
 }
 function renderFacts(){
@@ -1227,14 +1244,14 @@ renderNews();
 }
 async function loadHistory(){
 try{const c=JSON.parse(localStorage.getItem(HISTORY_KEY)||'null');if(c&&c.date===todayStr()&&c.items&&c.items.length){HISTORY=c.items;renderHistory();return;}}catch(e){}
-try{const h=await fetchOnThisDay('selected');if(h&&h.length){HISTORY=h.slice(0,18);try{localStorage.setItem(HISTORY_KEY,JSON.stringify({date:todayStr(),items:HISTORY}));}catch(e){}}}catch(e){HISTORY=[];}
+try{const h=await fetchOnThisDay('selected');HISTORY=(h&&h.length)?h.slice(0,18):[];if(HISTORY.length){try{localStorage.setItem(HISTORY_KEY,JSON.stringify({date:todayStr(),items:HISTORY}));}catch(e){}}}catch(e){HISTORY=[];}
 renderHistory();
 }
 
 /* ============ INIT ============ */
 feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,cont:null,catDone:false,done:false,loading:false};
 buildTopics(FALLBACK_TOPICS);
-renderChips();renderFeed();renderFacts();
+renderChips();renderFeed();renderFacts();renderNews();renderHistory();
 const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
 loadTopics();loadContent();loadFacts();loadNews();loadHistory();
 </script>
