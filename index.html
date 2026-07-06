@@ -256,6 +256,36 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .takeaways li{display:flex;gap:10px;font-size:14px;color:var(--ink);line-height:1.5}
 .takeaways li svg{width:16px;height:16px;color:var(--sage);flex-shrink:0;margin-top:2px}
 .article{font-size:16.5px;line-height:1.75;color:#3a3a37}
+.ai-panel{background:var(--paper);border:1px solid var(--border);border-radius:16px;padding:15px 15px 14px;margin:6px 0 24px}
+.ai-panel .ai-head{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sage);margin-bottom:12px}
+.ai-panel .ai-head svg{width:16px;height:16px}
+.ai-note{margin-left:auto;font-size:10px;font-weight:600;letter-spacing:.02em;text-transform:none;color:var(--faint)}
+.ai-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ai-btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--sage);background:var(--sage-tint-2);border:1px solid var(--sage-tint);border-radius:10px;padding:9px 13px;cursor:pointer;transition:.15s}
+.ai-btn:active{transform:scale(.97)}
+.ai-btn:disabled{opacity:.55;cursor:default}
+.ai-btn svg{width:15px;height:15px}
+.ai-log{display:flex;flex-direction:column;gap:9px}
+.ai-log:empty{display:none}
+.ai-msg{font-size:14px;line-height:1.6;border-radius:12px;padding:11px 13px}
+.ai-msg.user{align-self:flex-end;background:var(--sage);color:#fff;max-width:85%}
+.ai-msg.bot{align-self:flex-start;background:var(--sage-tint-2);border:1px solid var(--sage-tint);color:var(--ink);max-width:100%}
+.ai-typing{color:var(--muted);font-style:italic}
+.ai-err{color:#b4552f}
+.ai-ask{display:flex;gap:8px;margin-top:12px}
+.ai-ask input{flex:1;font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--parchment);border:1px solid var(--border);border-radius:10px;padding:10px 12px;outline:none}
+.ai-ask input:focus{border-color:var(--sage)}
+.ai-send{display:grid;place-items:center;width:42px;border:none;border-radius:10px;background:var(--sage);color:#fff;cursor:pointer}
+.ai-send svg{width:17px;height:17px}
+.ai-send:active{transform:scale(.95)}
+.reflect-card{background:linear-gradient(140deg,var(--sage-tint-2),var(--sage-tint));border:1px solid var(--sage-tint);border-radius:16px;padding:15px 16px;margin:2px 20px 10px}
+.reflect-head{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:8px}
+.reflect-head svg{width:15px;height:15px}
+.reflect-refresh{margin-left:auto;background:none;border:none;color:var(--sage);cursor:pointer;padding:2px;opacity:.7}
+.reflect-refresh svg{width:15px;height:15px}
+.reflect-refresh:active{transform:rotate(-40deg)}
+.reflect-q{font-family:var(--serif);font-size:17px;line-height:1.4;color:var(--ink);font-style:italic}
+.reflect-q.loading{color:var(--muted)}
 .article p{margin-bottom:18px}
 .article h3{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--ink);margin:26px 0 12px}
 .article blockquote{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--sage);border-left:3px solid var(--sage-300);padding:4px 0 4px 18px;margin:24px 0}
@@ -455,6 +485,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <!-- HOME / FEED -->
 <section class="view active" id="view-home">
 <div class="chips" id="feedChips"></div>
+<div id="reflectSlot"></div>
 <div id="hubSlot"></div>
 
 <div class="sec-head"><div><h2>Trending Now</h2><div class="sub">Sorotan pilihan editor</div></div></div>
@@ -572,6 +603,42 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 </div>
 
 <script>
+/* ============ FAST FETCH: Vercel edge proxy + session cache (transparent) ============ */
+(function(){
+if(!window.fetch)return;
+const _fx=window.fetch.bind(window);
+const _cache=new Map();
+const TTL=30*60*1000;
+const useProxy=(location.protocol==='http:'||location.protocol==='https:');
+window.fetch=function(input,init){
+try{
+const isStr=(typeof input==='string');
+const u=isStr?input:(input&&input.url);
+const external=!!u&&/^https?:\/\//i.test(u)&&u.indexOf('//'+location.host)===-1;
+let target=input;
+if(external&&useProxy&&isStr){target='/api/proxy?u='+encodeURIComponent(u);}
+const method=((init&&init.method)||'GET').toUpperCase();
+const noStore=!external||method!=='GET'||/\/page\/random\//.test(u||'');
+if(noStore){return _fx(target,init);}
+const now=Date.now();const hit=_cache.get(u);
+if(hit&&(now-hit.t)<TTL){return Promise.resolve(new Response(hit.body,{status:hit.status,headers:{'content-type':hit.ct}}));}
+return _fx(target,init).then(function(r){
+try{r.clone().text().then(function(body){_cache.set(u,{t:now,status:r.status,ct:(r.headers.get('content-type')||'application/json'),body:body});}).catch(function(){});}catch(e){}
+return r;
+});
+}catch(e){return _fx(input,init);}
+};
+})();
+/* ============ LAZY IMAGES: IntersectionObserver ============ */
+(function(){
+function paint(el){var bg=el.getAttribute('data-bg');if(bg){el.style.backgroundImage="url('"+bg.replace(/'/g,'%27')+"')";el.removeAttribute('data-bg');}}
+var io=('IntersectionObserver' in window)?new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){paint(e.target);io.unobserve(e.target);}});},{rootMargin:'400px 0px 400px 0px'}):null;
+function obs(el){if(!el||!el.getAttribute||!el.getAttribute('data-bg'))return;if(io)io.observe(el);else paint(el);}
+function scan(root){try{(root||document).querySelectorAll('.lazy-bg[data-bg]').forEach(obs);}catch(e){}}
+window._lazyScan=scan;
+function boot(){scan(document);if('MutationObserver' in window){var mo=new MutationObserver(function(muts){for(var i=0;i<muts.length;i++){var an=muts[i].addedNodes;if(!an)continue;for(var j=0;j<an.length;j++){var n=an[j];if(!n||n.nodeType!==1)continue;if(n.classList&&n.classList.contains('lazy-bg'))obs(n);if(n.querySelectorAll)n.querySelectorAll('.lazy-bg[data-bg]').forEach(obs);}}});mo.observe(document.body,{childList:true,subtree:true});}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
 /* ============ DATA ============ */
 function grad(a,b){return `linear-gradient(140deg,${a},${b})`;}
 const CATS=[
@@ -772,8 +839,63 @@ sc.appendChild(b);
 wrap.appendChild(sc);
 }
 
+/* ============ GROQ AI (summary + ask + reflection) ============ */
+const AI_MODEL='llama-3.1-8b-instant';
+function articleText(a){try{return clean(String((a&&a.body)||'').replace(/<[^>]+>/g,' ')).slice(0,7000);}catch(e){return (a&&a.excerpt)||'';}}
+function aiFmt(s){s=esc(s||'');s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/^\s*[-\u2022*]\s+/gm,'\u2022 ');return s.replace(/\n/g,'<br>');}
+async function groqStream(messages,opts,onToken){
+opts=opts||{};
+const res=await window.fetch('/api/groq',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({messages:messages,model:opts.model||AI_MODEL,temperature:(opts.temperature!=null?opts.temperature:0.4),max_tokens:opts.max_tokens||700,stream:true})});
+if(!res.ok||!res.body){let m='';try{m=(await res.json()).error||'';}catch(e){}throw new Error(m||('AI '+res.status));}
+const reader=res.body.getReader();const dec=new TextDecoder();let buf='',full='';
+while(true){const rd=await reader.read();if(rd.done)break;buf+=dec.decode(rd.value,{stream:true});let nl;while((nl=buf.indexOf('\n'))>=0){let line=buf.slice(0,nl);buf=buf.slice(nl+1);line=line.trim();if(!line||line.indexOf('data:')!==0)continue;const d=line.slice(5).trim();if(d==='[DONE]')continue;try{const j=JSON.parse(d);const tok=j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;if(tok){full+=tok;if(onToken)onToken(full);}}catch(e){}}}
+return full;
+}
+function aiPanelHTML(){return `<div class="ai-panel" id="aiPanel"><div class="ai-head">${svg('<path d="m12 3 1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4Z"/>')} Asisten AI<span class="ai-note">ditenagai Groq</span></div><div class="ai-actions"><button class="ai-btn" id="aiSummarize">${svg('<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>')} Ringkas & Key Takeaways</button></div><div class="ai-log" id="aiLog"></div><div class="ai-ask"><input id="aiAsk" type="text" placeholder="Tanya tentang artikel ini\u2026" autocomplete="off"/><button class="ai-send" id="aiAskBtn" aria-label="Kirim">${svg('<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/>')}</button></div></div>`;}
+function aiAddMsg(who,html){const log=$('#aiLog');if(!log)return null;const d=document.createElement('div');d.className='ai-msg '+who;d.innerHTML=html;log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
+async function ensureFull(a){if(a&&!a.full&&/^w_/.test(a.id||'')){try{await fetchFullArticle(a);}catch(e){}}}
+let _aiBusy=false;
+async function runReaderSummary(){
+if(_aiBusy)return;const a=currentArticle;if(!a)return;_aiBusy=true;
+const btn=$('#aiSummarize');if(btn){btn.disabled=true;}
+await ensureFull(a);
+const bot=aiAddMsg('bot','<span class="ai-typing">Menyusun ringkasan\u2026</span>');
+const sys='Kamu asisten baca yang mindful. Buat ringkasan Bahasa Indonesia dari artikel yang diberikan. Format: mulai dengan ringkasan 2 kalimat, lalu baris "Key Takeaways:", lalu 3-5 poin diawali tanda \u2022. Jawab HANYA berdasarkan teks artikel; jangan menambah fakta di luar teks.';
+const usr='Judul: '+a.title+'\n\nArtikel:\n'+articleText(a);
+try{await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:650},function(full){if(bot)bot.innerHTML=aiFmt(full);});}
+catch(e){if(bot)bot.innerHTML='<span class="ai-err">Gagal memuat AI. Pastikan aplikasi dijalankan di Vercel dan GROQ_API_KEY sudah diset.</span>';}
+if(btn){btn.disabled=false;}_aiBusy=false;
+}
+async function runReaderAsk(){
+if(_aiBusy)return;const inp=$('#aiAsk');if(!inp)return;const q=(inp.value||'').trim();if(!q)return;const a=currentArticle;if(!a)return;
+inp.value='';_aiBusy=true;aiAddMsg('user',esc(q));
+await ensureFull(a);
+const bot=aiAddMsg('bot','<span class="ai-typing">Berpikir\u2026</span>');
+const sys='Jawab pertanyaan pengguna HANYA berdasarkan artikel di bawah. Jika jawabannya tidak ada di artikel, katakan jujur bahwa artikel tidak menyebutkannya. Gunakan Bahasa Indonesia yang ringkas. Akhiri dengan baris "Sumber: <judul artikel>".';
+const usr='Artikel berjudul "'+a.title+'":\n'+articleText(a)+'\n\nPertanyaan: '+q;
+try{await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:650},function(full){if(bot)bot.innerHTML=aiFmt(full);});}
+catch(e){if(bot)bot.innerHTML='<span class="ai-err">Gagal memuat AI. Pastikan aplikasi dijalankan di Vercel dan GROQ_API_KEY sudah diset.</span>';}
+_aiBusy=false;
+}
+function wireReaderAI(a){const s=$('#aiSummarize');if(s)s.onclick=runReaderSummary;const b=$('#aiAskBtn');if(b)b.onclick=runReaderAsk;const i=$('#aiAsk');if(i)i.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();runReaderAsk();}};}
+const REFLECT_KEY='insight_reflect_v1';
+const REFLECT_FALLBACK=['Apa satu hal kecil yang membuatmu penasaran hari ini, dan mengapa?','Pengetahuan apa yang ingin kamu pahami lebih dalam minggu ini?','Jika kamu punya 10 menit tenang, topik apa yang ingin kamu renungkan?','Apa yang kamu syukuri dari sesuatu yang kamu pelajari baru-baru ini?'];
+function renderReflect(text,loading){const slot=$('#reflectSlot');if(!slot)return;slot.innerHTML=`<div class="reflect-card"><div class="reflect-head">${svg('<path d="M12 3a6 6 0 0 0-6 6c0 2 1 3 2 4 .7.7 1 1.3 1 2h6c0-.7.3-1.3 1-2 1-1 2-2 2-4a6 6 0 0 0-6-6Z"/><path d="M9 21h6"/>')} Refleksi Hari Ini<button class="reflect-refresh" id="reflectRefresh" aria-label="Perbarui">${svg('<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>')}</button></div><p class="reflect-q${loading?' loading':''}">${loading?'Menyusun pertanyaan reflektif\u2026':esc(text||'')}</p></div>`;const rr=$('#reflectRefresh');if(rr)rr.onclick=function(){loadReflection(true);};}
+let _reflectBusy=false;
+async function loadReflection(force){
+if(_reflectBusy)return;const slot=$('#reflectSlot');if(!slot)return;const today=todayStr();
+if(!force){try{const c=JSON.parse(localStorage.getItem(REFLECT_KEY)||'null');if(c&&c.d===today&&c.t){renderReflect(c.t);return;}}catch(e){}}
+_reflectBusy=true;renderReflect('',true);
+const reads=((S&&S.read)?S.read:[]).map(function(id){const x=ARTICLE_INDEX[id];return x&&x.title;}).filter(Boolean).slice(-6);
+const ctx=reads.length?('Topik yang baru dibaca pengguna: '+reads.join('; ')+'.'):'Pengguna belum membaca apa pun hari ini; buat pertanyaan reflektif umum yang menenangkan.';
+const sys='Kamu pemandu refleksi yang tenang dan mindful. Buat TEPAT SATU pertanyaan refleksi singkat (maksimal 20 kata) dalam Bahasa Indonesia yang mendorong perenungan tenang. Jangan beri pembuka, tanda kutip, atau penjelasan\u2014cukup pertanyaannya saja.';
+try{const out=await groqStream([{role:'system',content:sys},{role:'user',content:ctx}],{temperature:0.85,max_tokens:80},null);const q=(out||'').trim().replace(/^["'\u201c]+|["'\u201d]+$/g,'').trim();if(q){renderReflect(q);try{localStorage.setItem(REFLECT_KEY,JSON.stringify({d:today,t:q}));}catch(e){}}else{renderReflect(REFLECT_FALLBACK[Math.floor(Math.random()*REFLECT_FALLBACK.length)]);}}
+catch(e){renderReflect(REFLECT_FALLBACK[Math.floor(Math.random()*REFLECT_FALLBACK.length)]);}
+_reflectBusy=false;
+}
+
 /* ============ CARDS ============ */
-function coverPH(a){return a&&a.image?`<div class="ph img" style="background-image:url('${String(a.image).replace(/'/g,'%27')}')"></div>`:`<div class="ph" style="background:${(a&&a.bg)||'var(--sage)'}"></div>`;}
+function coverPH(a){return a&&a.image?`<div class="ph img lazy-bg" data-bg="${String(a.image).replace(/"/g,'%22').replace(/'/g,'%27')}"></div>`:`<div class="ph" style="background:${(a&&a.bg)||'var(--sage)'}"></div>`;}
 function cardHTML(a){
 const saved=S.saved.includes(a.id);
 const read=S.read.includes(a.id);
@@ -1113,6 +1235,7 @@ function readerBodyHTML(a){return `<span class="reader-cat">${a.catName}</span>
 <h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h4>
 <ul>${a.takeaways.map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
 </div>
+${aiPanelHTML()}
 <div class="article">${a.body}</div>
 <div class="citations">
 <h4>Sources & Citations</h4>
@@ -1131,7 +1254,7 @@ function setReaderIndex(i){
 if(i<0||i>=readerImgs.length)return;
 readerImgIndex=i;const a=readerImgs[i];currentArticle=a;
 document.querySelectorAll('#heroDots .dot').forEach((d,k)=>d.classList.toggle('on',k===i));
-const body=$('#view-read .reader-body');if(body)body.innerHTML=readerBodyHTML(a);
+const body=$('#view-read .reader-body');if(body)body.innerHTML=readerBodyHTML(a);wireReaderAI(a);
 const mr=$('#markRead');if(mr){const rd=S.read.includes(a.id);mr.classList.toggle('done',rd);mr.innerHTML=rd?svg('<path d="M20 6 9 17l-5-5"/>')+' Completed':'Mark as Read';}
 const sv=$('#readerSave');if(sv)sv.classList.toggle('saved',S.saved.includes(a.id));
 maybeLoadFull(a);
@@ -1171,6 +1294,7 @@ ${heroHtml}
 <h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h4>
 <ul>${a.takeaways.map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
 </div>
+${aiPanelHTML()}
 <div class="article">${a.body}</div>
 <div class="citations">
 <h4>Sources & Citations</h4>
@@ -1185,6 +1309,7 @@ ${a.cites.map((c,i)=>`<div class="cite"><span class="num">[${i+1}]</span><span>$
 $('#readerBack').onclick=()=>{const tid=currentArticle&&currentArticle.id;showView(lastView,true);if(tid){requestAnimationFrame(()=>{const c=document.querySelector('#view-'+lastView+' [data-id="'+tid+'"]');if(c)c.scrollIntoView({block:'center'});});}};
 $('#markRead').onclick=()=>toggleRead(currentArticle.id);
 $('#readerSave').onclick=()=>{toggleSave(currentArticle.id);const b=$('#readerSave');b.classList.toggle('saved',S.saved.includes(currentArticle.id));};
+wireReaderAI(a);
 showView('read',true,false);
 $('#scroll').scrollTo({top:0});
 if(photo){const g=$('#readerGrad');if(g)g.style.opacity='0';const track=$('#heroTrack');if(track){track.scrollLeft=track.clientWidth*idx;const slides=track.querySelectorAll('.hero-slide');const cur=slides[idx];if(cur)cur.querySelectorAll('[data-bg]').forEach(loadHeroBg);bindHeroCarousel();}}
@@ -1597,7 +1722,7 @@ if(all.length){const off=dayOffset()%all.length;all=all.slice(off).concat(all.sl
 return all.slice(0,60);
 }
 function railCard(a,iconPath,kicker,mainText){
-const img=a.image?`<div class="fact-thumb ph img" style="background-image:url('${String(a.image).replace(/'/g,'%27')}')"></div>`:'';
+const img=a.image?`<div class="fact-thumb ph img lazy-bg" data-bg="${String(a.image).replace(/"/g,'%22').replace(/'/g,'%27')}"></div>`:'';
 return `<div class="fact-card" data-id="${a.id}">${img}<div class="fact-body"><span class="fact-kicker">${svg(iconPath)} ${esc(kicker)}</span><p>${esc(mainText)}</p></div></div>`;
 }
 function mkFactArticle(f,catName,pfx,i){
@@ -1678,7 +1803,7 @@ renderChips();renderFeed();renderHub();
 const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
 const _lb=$('#liveBtn');if(_lb)_lb.onclick=()=>{const v=lastView||'home';if(v==='gallery'){toast('Memuat visual baru...');loadGallery(true);}else if(v==='discover'){const si=$('#searchInput');const q=si?si.value:'';if(q){onDiscSearch(q);}else{renderDiscover();}toast('Diperbarui');}else if(v==='library'){renderLibrary();toast('Diperbarui');}else if(v==='profile'){renderProfile();toast('Diperbarui');}else{toast('Memuat konten terbaru...');try{localStorage.removeItem(FACTS_KEY);localStorage.removeItem(NEWS_KEY);localStorage.removeItem(HISTORY_KEY);}catch(_e){}FACTS=[];factsSeen.clear();factsScrollLeft=0;factsExhausted=false;NEWS=[];newsSeen.clear();newsDay=0;newsDone=false;newsInit=false;newsScrollLeft=0;HISTORY=null;renderHub();loadContent(true);loadFacts();loadNews();loadHistory();}const s=$('#scroll');if(s)s.scrollTo({top:0,behavior:'smooth'});};
 document.addEventListener('click',(e)=>{if(hubOpen&&!e.target.closest('.hub-head')){hubOpen=false;const m=$('#hubMenu');if(m)m.classList.remove('open');const t=$('#hubToggle');if(t)t.setAttribute('aria-expanded','false');}});
-loadTopics();loadContent();loadFacts();loadNews();loadHistory();
+loadTopics();loadContent();loadFacts();loadNews();loadHistory();loadReflection();
 window.addEventListener('hashchange',()=>{if(_hashLock)return;applyHash();});
 if(location.hash&&location.hash.length>2){applyHash();}else{syncHash('home');}
 </script>
