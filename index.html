@@ -1515,19 +1515,26 @@ const FALLBACK_HISTORY=[
 {year:'1876',text:'Alexander Graham Bell mematenkan pesawat telepon.',url:'https://id.wikipedia.org/wiki/Telepon',thumb:'',title:'Telepon'}
 ];
 let FACTS=[];
-let NEWS=null;
+let NEWS=[];let newsDay=0,newsLoading=false,newsDone=false,newsInit=false,newsScrollLeft=0;
 let HISTORY=null;
-let factsShown=8;
+let factsShown=8;let factsLoading=false,factsScrollLeft=0,factsExhausted=false;const factsSeen=new Set();
 let hubTab='facts';let hubOpen=false;
 const NEWS_KEY='insight_news_v2';
 const HISTORY_KEY='insight_history_v2';
 function pgInfo(pg){pg=pg||{};return {url:(pg.content_urls&&pg.content_urls.desktop&&pg.content_urls.desktop.page)||'',thumb:(pg.thumbnail&&pg.thumbnail.source)||'',title:(pg.titles&&pg.titles.normalized)||pg.normalizedtitle||pg.title||''};}
 async function fetchOnThisDay(type,label){
 const d=new Date();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
-const url='https://id.wikipedia.org/api/rest_v1/feed/onthisday/'+type+'/'+mm+'/'+dd;
-const r=await fetch(url);if(!r.ok)throw new Error('otd '+r.status);
+const hosts=['id.wikipedia.org','en.wikipedia.org'];
+for(let hi=0;hi<hosts.length;hi++){
+try{
+const url='https://'+hosts[hi]+'/api/rest_v1/feed/onthisday/'+type+'/'+mm+'/'+dd;
+const r=await fetch(url);if(!r.ok)continue;
 const j=await r.json();const ev=(j[type]||j.selected||j.events||[]);
-return ev.map(e=>{const info=pgInfo((e.pages&&e.pages[0])||{});return {year:e.year||'',text:clean(e.text),url:info.url,thumb:info.thumb,title:info.title,kind:label||''};}).filter(f=>f.text&&f.text.length>10);
+const out=ev.map(e=>{const info=pgInfo((e.pages&&e.pages[0])||{});return {year:e.year||'',text:clean(e.text),url:info.url,thumb:info.thumb,title:info.title,kind:label||''};}).filter(f=>f.text&&f.text.length>10);
+if(out.length)return out;
+}catch(e){}
+}
+return [];
 }
 function sumToFact(s){s=s||{};const info=pgInfo(s);const txt=clean((s.extract||s.description||'').toString());return {year:'',text:txt,url:info.url||((s.content_urls&&s.content_urls.desktop&&s.content_urls.desktop.page)||''),thumb:info.thumb||((s.thumbnail&&s.thumbnail.source)||''),title:info.title||s.normalizedtitle||s.title||''};}
 async function fetchHistoryRich(){
@@ -1539,13 +1546,25 @@ let all=main.concat(bd).concat(holidays||[]);
 const seen=new Set();all=all.filter(f=>{const k=(f.title||f.text).toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
 return all.slice(0,48);
 }
-async function fetchNews(){
-const d=new Date();const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
-async function grab(host){const url='https://'+host+'/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd;const r=await fetch(url);if(!r.ok)throw new Error('news '+r.status);const j=await r.json();return (j.news||[]).map(n=>{const links=n.links||[];const pg=links.find(l=>l&&l.thumbnail)||links[0]||{};const info=pgInfo(pg);const txt=clean((n.story||'').replace(/<[^>]+>/g,' '));return {year:'',text:txt,url:info.url,thumb:info.thumb,title:info.title};}).filter(f=>f.text&&f.text.length>10);}
+async function fetchNewsForOffset(off){
+const d=new Date();d.setDate(d.getDate()-off);const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
+async function grab(host){const url='https://'+host+'/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd;const r=await fetch(url);if(!r.ok)throw new Error('news '+r.status);const j=await r.json();return (j.news||[]).map(n=>{const links=n.links||[];const pg=links.find(l=>l&&l.thumbnail)||links[0]||{};const info=pgInfo(pg);const txt=clean((n.story||'').replace(/<[^>]+>/g,' '));return {year:'',text:txt,url:info.url,thumb:info.thumb,title:info.title,dateLabel:dd+'/'+mm+'/'+yy};}).filter(f=>f.text&&f.text.length>10);}
 let all=[];try{all=await grab('id.wikipedia.org');}catch(e){}
-if(all.length<6){try{const en=await grab('en.wikipedia.org');all=all.concat(en);}catch(e){}}
-const seen=new Set();all=all.filter(f=>{const k=(f.title||f.text).toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+if(all.length<3){try{const en=await grab('en.wikipedia.org');all=all.concat(en);}catch(e){}}
 return all;
+}
+const newsSeen=new Set();
+async function loadMoreNews(){
+if(newsLoading||newsDone)return;newsLoading=true;renderNews();
+let added=0,tries=0;
+try{
+while(added<5&&tries<6&&newsDay<=45){
+const items=await fetchNewsForOffset(newsDay);newsDay++;tries++;
+(items||[]).forEach(f=>{const k=(f.title||f.text||'').toLowerCase();if(k&&!newsSeen.has(k)){newsSeen.add(k);NEWS.push(f);added++;}});
+}
+if(newsDay>45||added===0)newsDone=true;
+}catch(e){}
+newsInit=true;newsLoading=false;renderNews();
 }
 async function fetchFacts(){
 const d=new Date();const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
@@ -1569,6 +1588,7 @@ const a={id:id,cat:'fakta',catName:catName,title:(f.title||(f.text||'').slice(0,
 ARTICLE_INDEX[id]=a;return a;
 }
 function railSkeleton(){return Array(3).fill('<div class="fact-card" style="pointer-events:none;opacity:.55"><div class="fact-body"><span class="fact-kicker" style="color:var(--faint)">Memuat\u2026</span><p style="color:var(--faint)">Menyiapkan konten untukmu\u2026</p></div></div>').join('');}
+function hubHint(icon,msg){return '<div class="fact-card" style="pointer-events:none"><div class="fact-body"><span class="fact-kicker">'+svg(icon)+' Info</span><p style="color:var(--muted)">'+esc(msg)+'</p></div></div>';}
 function hubMeta(tab){
 if(tab==='news')return {title:'Peristiwa Terkini',sub:'Diperbarui hari ini \u00b7 kabar dunia',icon:'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>'};
 if(tab==='history'){const _d=new Date();const _nm=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][_d.getMonth()];return {title:'Hari Ini dalam Sejarah',sub:_d.getDate()+' '+_nm+' \u00b7 peristiwa lintas tahun',icon:'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>'};}
@@ -1579,20 +1599,23 @@ const slot=$('#hubSlot');if(!slot)return;
 const meta=hubMeta(hubTab);
 let cards='',more='';
 if(hubTab==='news'){
-const loading=(NEWS===null);const items=loading?[]:((NEWS&&NEWS.length)?NEWS:FALLBACK_NEWS);
-cards=loading?railSkeleton():items.slice(0,20).map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,meta.icon,'Peristiwa terkini',f.text);}).join('');
+if(!newsInit&&!NEWS.length){cards=railSkeleton();}
+else if(!NEWS.length){cards=hubHint(meta.icon,'Berita terkini butuh koneksi internet untuk dimuat. Coba lagi saat online.');}
+else{cards=NEWS.map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,meta.icon,(f.dateLabel?('Berita \u00b7 '+f.dateLabel):'Peristiwa terkini'),f.text);}).join('');if(newsLoading)cards+=railSkeleton();}
 }else if(hubTab==='history'){
-const loading=(HISTORY===null);const items=loading?[]:((HISTORY&&HISTORY.length)?HISTORY:FALLBACK_HISTORY);
-cards=loading?railSkeleton():items.slice(0,48).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);const _k=f.kind?(f.kind+(f.year?(' \u00b7 '+f.year):'')):(f.year?('Tahun '+f.year):'Hari ini');return railCard(a,meta.icon,_k,f.text);}).join('');
+if(HISTORY===null){cards=railSkeleton();}
+else if(!HISTORY.length){cards=hubHint(meta.icon,'Peristiwa untuk tanggal ini belum bisa dimuat \u2014 butuh koneksi internet untuk mengambil data Hari Ini dalam Sejarah.');}
+else{cards=HISTORY.slice(0,48).map((f,i)=>{const a=mkFactArticle(f,'Hari Ini dalam Sejarah','hist',i);const _k=f.kind?(f.kind+(f.year?(' \u00b7 '+f.year):'')):(f.year?('Tahun '+f.year):'Hari ini');return railCard(a,meta.icon,_k,f.text);}).join('');}
 }else{
-const pool=FACTS.length?FACTS:FALLBACK_FACTS;const show=pool.slice(0,factsShown);
-cards=show.map((f,i)=>{const a=mkFactArticle(f,'Tahukah Kamu','fact',i);return railCard(a,meta.icon,(f.year?('Tahun '+f.year):'Fakta menarik'),f.text);}).join('');
-const rem=pool.length-factsShown;
-more=rem>0?`<div class="fact-card" id="moreFacts"><div class="fact-body" style="display:flex;align-items:center;justify-content:center;min-height:74px"><span class="fact-kicker">${svg('<path d="M12 5v14"/><path d="M5 12h14"/>')} Muat ${Math.min(8,rem)} lagi</span></div></div>`:'';
+const pool=FACTS.length?FACTS:FALLBACK_FACTS;
+cards=pool.map((f,i)=>{const a=mkFactArticle(f,'Tahukah Kamu','fact',i);return railCard(a,meta.icon,(f.year?('Tahun '+f.year):'Fakta menarik'),f.text);}).join('');
+if(factsLoading)cards+=railSkeleton();
 }
 const opts=[['facts','\uD83D\uDCA1','Tahukah Kamu?'],['history','\uD83D\uDCDC','Hari Ini dalam Sejarah'],['news','\uD83D\uDCF0','Peristiwa Terkini']];
 const menu=opts.map(o=>`<button class="hub-opt${hubTab===o[0]?' active':''}" data-hub="${o[0]}"><span>${o[1]} ${o[2]}</span>${hubTab===o[0]?svg('<path d="M20 6 9 17l-5-5"/>','chk'):''}</button>`).join('');
 slot.innerHTML=`<div class="hub"><div class="hub-head"><button class="hub-title" id="hubToggle" aria-expanded="${hubOpen}"><span class="hub-tt"><span class="hub-h2">${esc(meta.title)} ${svg('<path d="m6 9 6 6 6-6"/>','chev')}</span><span class="hub-sub">${esc(meta.sub)} \u00b7 ketuk untuk ganti</span></span></button><div class="hub-menu${hubOpen?' open':''}" id="hubMenu">${menu}</div></div><div class="facts-rail">${cards}${more}</div></div>`;
+const _rail=slot.querySelector('.facts-rail');
+if(_rail&&(hubTab==='news'||hubTab==='facts')){const _sl=hubTab==='news'?newsScrollLeft:factsScrollLeft;_rail.scrollLeft=_sl||0;_rail.addEventListener('scroll',()=>{if(hubTab==='news')newsScrollLeft=_rail.scrollLeft;else factsScrollLeft=_rail.scrollLeft;if((_rail.scrollWidth-_rail.scrollLeft-_rail.clientWidth)>=420)return;if(hubTab==='news'){if(!newsLoading&&!newsDone)loadMoreNews();}else{if(!factsLoading&&!factsExhausted)loadMoreFacts();}},{passive:true});if(_rail.scrollWidth<=_rail.clientWidth+40){if(hubTab==='news'){if(!newsLoading&&!newsDone)setTimeout(loadMoreNews,300);}else{if(!factsLoading&&!factsExhausted)setTimeout(loadMoreFacts,300);}}}
 const tg=$('#hubToggle');if(tg)tg.onclick=(e)=>{e.stopPropagation();hubOpen=!hubOpen;const m=$('#hubMenu');if(m)m.classList.toggle('open',hubOpen);tg.setAttribute('aria-expanded',hubOpen);};
 slot.querySelectorAll('.hub-opt').forEach(b=>{b.onclick=(e)=>{e.stopPropagation();hubTab=b.dataset.hub;hubOpen=false;renderHub();};});
 const mf=$('#moreFacts');if(mf)mf.onclick=(e)=>{e.stopPropagation();factsShown+=8;renderHub();};
@@ -1601,14 +1624,26 @@ function renderNews(){renderHub();}
 function renderHistory(){renderHub();}
 function renderFacts(){renderHub();}
 async function loadFacts(){
-try{const c=JSON.parse(localStorage.getItem(FACTS_KEY)||'null');if(c&&c.date===todayStr()&&c.facts&&c.facts.length){FACTS=c.facts;renderFacts();return;}}catch(e){}
-try{const f=await fetchFacts();if(f&&f.length){FACTS=f;try{localStorage.setItem(FACTS_KEY,JSON.stringify({date:todayStr(),facts:f}));}catch(e){}renderFacts();return;}}catch(e){}
+try{const c=JSON.parse(localStorage.getItem(FACTS_KEY)||'null');if(c&&c.date===todayStr()&&c.facts&&c.facts.length){FACTS=c.facts;FACTS.forEach(f=>factsSeen.add((f.title||f.text||'').toLowerCase()));renderFacts();return;}}catch(e){}
+try{const f=await fetchFacts();if(f&&f.length){FACTS=f;f.forEach(x=>factsSeen.add((x.title||x.text||'').toLowerCase()));try{localStorage.setItem(FACTS_KEY,JSON.stringify({date:todayStr(),facts:f}));}catch(e){}renderFacts();return;}}catch(e){}
 FACTS=[];renderFacts();
 }
+async function loadMoreFacts(){
+if(factsLoading||factsExhausted)return;factsLoading=true;renderFacts();
+let added=0,tries=0;
+try{
+while(added<8&&tries<3){
+const rnd=await Promise.all(Array(8).fill(0).map(()=>fetch('https://id.wikipedia.org/api/rest_v1/page/random/summary').then(r=>r.ok?r.json():null).catch(()=>null)));
+rnd.forEach(s=>{if(s){const f=sumToFact(s);const k=(f.title||f.text||'').toLowerCase();if(f.text&&f.text.length>=12&&k&&!factsSeen.has(k)){factsSeen.add(k);FACTS.push(f);added++;}}});
+tries++;
+}
+if(added===0)factsExhausted=true;
+}catch(e){factsExhausted=true;}
+factsLoading=false;renderFacts();
+}
 async function loadNews(){
-try{const c=JSON.parse(localStorage.getItem(NEWS_KEY)||'null');if(c&&c.date===todayStr()&&c.items){NEWS=c.items;renderNews();return;}}catch(e){}
-try{const n=await fetchNews();NEWS=n||[];try{localStorage.setItem(NEWS_KEY,JSON.stringify({date:todayStr(),items:NEWS}));}catch(e){}}catch(e){NEWS=[];}
-renderNews();
+NEWS=[];newsDay=0;newsDone=false;newsInit=false;newsScrollLeft=0;newsSeen.clear();
+await loadMoreNews();
 }
 async function loadHistory(){
 try{const c=JSON.parse(localStorage.getItem(HISTORY_KEY)||'null');if(c&&c.date===todayStr()&&c.items&&c.items.length){HISTORY=c.items;renderHistory();return;}}catch(e){}
@@ -1621,7 +1656,7 @@ feedCache.all={items:ARTICLES.slice(),offset:0,rot:0,cont:null,catDone:false,don
 buildTopics(FALLBACK_TOPICS);
 renderChips();renderFeed();renderHub();
 const _sc=$('#scroll');if(_sc)_sc.addEventListener('scroll',onFeedScroll,{passive:true});
-const _lb=$('#liveBtn');if(_lb)_lb.onclick=()=>{const v=lastView||'home';if(v==='gallery'){toast('Memuat visual baru...');loadGallery(true);}else if(v==='discover'){const si=$('#searchInput');const q=si?si.value:'';if(q){onDiscSearch(q);}else{renderDiscover();}toast('Diperbarui');}else if(v==='library'){renderLibrary();toast('Diperbarui');}else if(v==='profile'){renderProfile();toast('Diperbarui');}else{toast('Memuat konten terbaru...');try{localStorage.removeItem(FACTS_KEY);localStorage.removeItem(NEWS_KEY);localStorage.removeItem(HISTORY_KEY);}catch(_e){}FACTS=[];NEWS=null;HISTORY=null;renderHub();loadContent(true);loadFacts();loadNews();loadHistory();}const s=$('#scroll');if(s)s.scrollTo({top:0,behavior:'smooth'});};
+const _lb=$('#liveBtn');if(_lb)_lb.onclick=()=>{const v=lastView||'home';if(v==='gallery'){toast('Memuat visual baru...');loadGallery(true);}else if(v==='discover'){const si=$('#searchInput');const q=si?si.value:'';if(q){onDiscSearch(q);}else{renderDiscover();}toast('Diperbarui');}else if(v==='library'){renderLibrary();toast('Diperbarui');}else if(v==='profile'){renderProfile();toast('Diperbarui');}else{toast('Memuat konten terbaru...');try{localStorage.removeItem(FACTS_KEY);localStorage.removeItem(NEWS_KEY);localStorage.removeItem(HISTORY_KEY);}catch(_e){}FACTS=[];factsSeen.clear();factsScrollLeft=0;factsExhausted=false;NEWS=[];newsSeen.clear();newsDay=0;newsDone=false;newsInit=false;newsScrollLeft=0;HISTORY=null;renderHub();loadContent(true);loadFacts();loadNews();loadHistory();}const s=$('#scroll');if(s)s.scrollTo({top:0,behavior:'smooth'});};
 document.addEventListener('click',(e)=>{if(hubOpen&&!e.target.closest('.hub-head')){hubOpen=false;const m=$('#hubMenu');if(m)m.classList.remove('open');const t=$('#hubToggle');if(t)t.setAttribute('aria-expanded','false');}});
 loadTopics();loadContent();loadFacts();loadNews();loadHistory();
 window.addEventListener('hashchange',()=>{if(_hashLock)return;applyHash();});
