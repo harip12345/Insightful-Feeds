@@ -200,7 +200,7 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 /* ---------- Read-in-place full card ---------- */
 .card-full{background:var(--paper);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:.2s}
 .card-full:active{transform:scale(.99)}
-.card-full .thumb-full{height:172px;position:relative;overflow:hidden}
+.card-full .thumb-full{aspect-ratio:16/10;position:relative;overflow:hidden;background:var(--sage-tint)}
 .card-full .thumb-full .ph{position:absolute;inset:0}
 .card-full .thumb-full .tag{position:absolute;top:13px;left:13px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(30,52,41,.6);backdrop-filter:blur(4px);padding:5px 10px;border-radius:999px}
 .card-full .thumb-full .save-btn{position:absolute;top:11px;right:11px;background:rgba(251,249,248,.92);backdrop-filter:blur(4px)}
@@ -211,12 +211,13 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .card-full .metatop .dot{width:3px;height:3px;border-radius:50%;background:var(--faint)}
 .card-full .metatop .readflag{display:inline-flex;align-items:center;gap:3px;color:var(--sage);font-weight:700}
 .card-full .metatop .readflag svg{width:12px;height:12px}
-.card-full .intro{font-size:14.5px;line-height:1.65;color:#4a4a46;margin-bottom:15px}
+.card-full .intro{font-size:14.5px;line-height:1.65;color:#4a4a46;margin-bottom:15px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .mini-take{background:var(--sage-tint-2);border:1px solid var(--sage-tint);border-radius:12px;padding:13px 14px;margin-bottom:15px}
 .mini-take h5{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:9px}
 .mini-take h5 svg{width:14px;height:14px}
 .mini-take ul{list-style:none;display:flex;flex-direction:column;gap:8px}
 .mini-take li{display:flex;gap:8px;font-size:13px;color:var(--ink);line-height:1.45}
+.mini-take li span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .mini-take li svg{width:15px;height:15px;color:var(--sage);flex-shrink:0;margin-top:1px}
 .readmore{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:13.5px;font-weight:700;color:var(--sage);background:none;border:none;cursor:pointer;padding:2px 0}
 .readmore svg{width:16px;height:16px}
@@ -686,7 +687,7 @@ const CAT_Q={psychology:'Psikologi',philosophy:'Filsafat',productivity:'Produkti
 const FALLBACK_TOPICS=['Psikologi','Filsafat','Sains','Teknologi','Sejarah','Seni','Musik','Sastra','Ekonomi','Politik','Kesehatan','Biologi','Fisika','Matematika','Astronomi','Geografi','Budaya','Olahraga','Agama','Bahasa','Lingkungan','Komputer','Kedokteran','Pendidikan','Film','Arsitektur','Kuliner','Antariksa'];
 let TOPICS=[];
 const CURATED_TOPICS=[
-{q:'Astronomi',label:'🌌 Astronomi'},
+{q:'Astronomi',label:'   Astronomi'},
 {q:'Luar angkasa',label:'🚀 Luar Angkasa'},
 {q:'Mitologi',label:'🐉 Mitologi'},
 {q:'Psikologi',label:'    Psikologi'},
@@ -803,9 +804,12 @@ ${coverPH(a)}<div class="grad"></div>
 function cardFullHTML(a){
 const saved=S.saved.includes(a.id);
 const read=S.read.includes(a.id);
-const intro=stripFirst(a.body)||a.excerpt;
+const rawIntro=stripFirst(a.body)||a.excerpt||'';
+const intro=(sentences(rawIntro).slice(0,2).join(' ')||rawIntro).trim();
+let _hw=(a.ih&&a.iw)?(a.ih/a.iw):0.62;if(!isFinite(_hw)||_hw<=0)_hw=0.62;_hw=Math.max(0.5,Math.min(1.4,_hw));
+const _ar='aspect-ratio:'+(1/_hw).toFixed(3);
 return `<article class="card-full${read?' read':''}" data-id="${a.id}">
-<div class="thumb-full">${coverPH(a)}
+<div class="thumb-full" style="${_ar}">${coverPH(a)}
 <span class="tag">${a.catName}</span>
 <button class="save-btn${saved?' saved':''}" data-save="${a.id}" aria-label="Save">${svg('<path d="M6 3h12v18l-6-4-6 4Z"/>')}</button>
 </div>
@@ -835,6 +839,19 @@ const ex=(p.extract||'').replace(/\n{2,}/g,'\n').trim();const sents=sentences(ex
 const img=(p.thumbnail&&p.thumbnail.source)||(p.original&&p.original.source)||'';
 return {id:'w_'+catId+'_'+p.pageid,cat:catId,catName:catName||catId,title:p.title,wikiTitle:p.title,kind:classifyKind(p.title,ex),full:false,author:'Wikipedia',role:'Ensiklopedia bebas',rt:estRead(ex),bg:bg||'var(--sage)',image:img,iw:(p.thumbnail&&p.thumbnail.width)||0,ih:(p.thumbnail&&p.thumbnail.height)||0,excerpt:clean(sents[0]||ex).slice(0,170),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[clean(ex).slice(0,120)]).map(clean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. '+(p.canonicalurl||('https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.title).replace(/ /g,'_'))))]};
 }
+function wikiRestToArticle(p,catId,catName,bg){
+const desc=p.description||'';
+const snip=clean((p.excerpt||'').replace(/<[^>]+>/g,''));
+const thumb=(p.thumbnail&&p.thumbnail.url)?('https:'+p.thumbnail.url):'';
+const ex=snip||desc||p.title;
+return {id:'w_'+catId+'_'+p.id,cat:catId,catName:catName||catId,title:p.title,wikiTitle:p.title,kind:desc||'artikel',full:false,author:'Wikipedia',role:'Ensiklopedia bebas',rt:3,bg:bg||'var(--sage)',image:thumb,iw:(p.thumbnail&&p.thumbnail.width)||0,ih:(p.thumbnail&&p.thumbnail.height)||0,excerpt:(((desc?(desc+' \u2014 '):'')+snip).slice(0,180))||p.title,takeaways:[ex].filter(Boolean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.key||p.title))]};
+}
+async function searchWiki(query,limit){
+const url='https://id.wikipedia.org/w/rest.php/v1/search/page?q='+encodeURIComponent(query)+'&limit='+(limit||25);
+const r=await fetch(url);if(!r.ok)throw new Error('search '+r.status);
+const j=await r.json();const pages=(j.pages||[]);
+return pages.map(p=>wikiRestToArticle(p,slug(query),query,'var(--sage)'));
+}
 async function searchArticles(query,bg,name,offset,limit){
 const url=WIKI+'?action=query&format=json&origin=*&generator=search&gsrsearch='+encodeURIComponent(query)+'&gsrnamespace=0&gsrlimit='+(limit||12)+'&gsroffset='+(offset||0)+'&prop=extracts|pageimages|info&inprop=url&explaintext=1&exlimit=max&exchars=3200&exsectionformat=plain&piprop=thumbnail|original&pithumbsize=1000&redirects=1';
 const r=await fetch(url);if(!r.ok)throw new Error('wiki '+r.status);
@@ -854,7 +871,7 @@ let ovMode='article',ovTimer=null,ovImgItems=[];
 function openSearch(){const ov=$('#searchOverlay');if(!ov)return;ovMode=(lastView==='gallery')?'gallery':'article';const inp=$('#ovSearchInput');if(inp)inp.placeholder=ovMode==='gallery'?'Cari gambar di Kanvas...':'Cari insight, topik, tokoh...';ov.classList.add('open');const res=$('#ovResults');if(res)res.innerHTML='<div class="ov-hint">Ketik kata kunci untuk mencari secara live...</div>';setTimeout(()=>{if(inp){inp.focus();if(inp.value.trim())onOvSearch(inp.value);}},60);}
 function closeSearch(){const ov=$('#searchOverlay');if(ov)ov.classList.remove('open');}
 async function liveImageSearch(q){const results=await Promise.all(GALLERY_SOURCES.map(s=>{try{return Promise.resolve(s.fetch(q,q,0)).catch(()=>[]);}catch(e){return Promise.resolve([]);}}));let items=[];results.forEach(r=>{if(Array.isArray(r))items=items.concat(r);});const seen={},out=[];items.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;out.push(a);}});return out;}
-async function liveArticleSearch(q){let items=[];try{items=await searchArticles(q,'var(--sage)',q,0,40);}catch(e){items=[];}const t=q.toLowerCase();const seen={};items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});const local=ARTICLES.filter(a=>{const k=(a.title||'').toLowerCase();if(seen[a.id]||seen[k])return false;return a.title.toLowerCase().includes(t)||(a.excerpt||'').toLowerCase().includes(t)||(a.catName||'').toLowerCase().includes(t)||(a.author||'').toLowerCase().includes(t);});return items.concat(local);}
+async function liveArticleSearch(q){let items=[];try{items=await searchWiki(q,25);}catch(e){items=[];}if(!items.length){try{items=await searchArticles(q,'var(--sage)',q,0,20);}catch(e){items=[];}}const t=q.toLowerCase();const seen={};items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});const local=ARTICLES.filter(a=>{const k=(a.title||'').toLowerCase();if(seen[a.id]||seen[k])return false;return a.title.toLowerCase().includes(t)||(a.excerpt||'').toLowerCase().includes(t)||(a.catName||'').toLowerCase().includes(t)||(a.author||'').toLowerCase().includes(t);});return items.concat(local);}
 function renderOvArticles(items,q){const res=$('#ovResults');if(!res)return;if(!items.length){res.innerHTML=emptyMsg('Tidak ada hasil untuk "'+esc(q)+'".');return;}regArticles(items);res.innerHTML='<div class="feed" style="padding:14px 20px 40px">'+items.map(cardHTML).join('')+'</div>';markSaved();}
 function renderOvGallery(items,q){const res=$('#ovResults');if(!res)return;if(!items.length){res.innerHTML=emptyMsg('Tidak ada gambar untuk "'+esc(q)+'".');return;}regArticles(items);ovImgItems=items;let a='',b='';const h=[0,0];items.forEach(it=>{const r=galRatio(it);const ci=h[0]<=h[1]?0:1;h[ci]+=1/r+0.12;const card=galleryCardHTML(it,r);if(ci===0)a+=card;else b+=card;});res.innerHTML='<div class="gal-grid"><div class="gal-col">'+a+'</div><div class="gal-col">'+b+'</div></div>';}
 function onOvSearch(q){q=(q||'').trim();clearTimeout(ovTimer);const res=$('#ovResults');if(!res)return;if(!q){res.innerHTML='<div class="ov-hint">Ketik kata kunci untuk mencari secara live...</div>';return;}res.innerHTML=ovMode==='gallery'?('<div class="gal-grid">'+gallerySkeleton()+'</div>'):('<div style="padding:14px 20px 40px">'+skeleton()+'</div>');ovTimer=setTimeout(async()=>{const cur=q;if(ovMode==='gallery'){const items=await liveImageSearch(cur);const now=$('#ovSearchInput');if(now&&now.value.trim()===cur)renderOvGallery(items,cur);}else{const items=await liveArticleSearch(cur);const now=$('#ovSearchInput');if(now&&now.value.trim()===cur)renderOvArticles(items,cur);}},420);}
@@ -1030,7 +1047,7 @@ if(!q){renderDiscList('');return;}
 const head=$('#discResultsHead').querySelector('h2');head.textContent='Mencari\u2026';
 $('#discList').innerHTML=skeleton();
 discTimer=setTimeout(async()=>{
-try{const items=await searchArticles(q,'var(--sage)',q,0,18);
+try{let items=await searchWiki(q,25).catch(()=>[]);if(!items.length){items=await searchArticles(q,'var(--sage)',q,0,18).catch(()=>[]);}
 if(items.length){discResults(items,`Hasil untuk \u201c${q}\u201d (${items.length})`);}
 else{renderDiscList(q);}
 }catch(e){renderDiscList(q);}
@@ -1547,8 +1564,11 @@ const seen=new Set();all=all.filter(f=>{const k=(f.title||f.text).toLowerCase();
 return all.slice(0,48);
 }
 async function fetchNewsForOffset(off){
-const d=new Date();d.setDate(d.getDate()-off);const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
-async function grab(host){const url='https://'+host+'/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd;const r=await fetch(url);if(!r.ok)throw new Error('news '+r.status);const j=await r.json();return (j.news||[]).map(n=>{const links=n.links||[];const pg=links.find(l=>l&&l.thumbnail)||links[0]||{};const info=pgInfo(pg);const txt=clean((n.story||'').replace(/<[^>]+>/g,' '));return {year:'',text:txt,url:info.url,thumb:info.thumb,title:info.title,dateLabel:dd+'/'+mm+'/'+yy};}).filter(f=>f.text&&f.text.length>10);}
+const d=new Date();d.setDate(d.getDate()-off);const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');const dl=dd+'/'+mm+'/'+yy;
+async function grab(host){const url='https://'+host+'/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd;const r=await fetch(url);if(!r.ok)throw new Error('news '+r.status);const j=await r.json();let out=[];
+(j.news||[]).forEach(n=>{const links=n.links||[];const pg=links.find(l=>l&&l.thumbnail)||links[0]||{};const info=pgInfo(pg);const txt=clean((n.story||'').replace(/<[^>]+>/g,' '));if(txt&&txt.length>10)out.push({year:'',text:txt,url:info.url,thumb:info.thumb,title:info.title,dateLabel:dl,kind:'Berita'});});
+((j.mostread&&j.mostread.articles)||[]).forEach(a=>{const f=sumToFact(a);if(f.text&&f.text.length>=12){f.dateLabel=dl;f.kind='Populer';out.push(f);}});
+return out;}
 let all=[];try{all=await grab('id.wikipedia.org');}catch(e){}
 if(all.length<3){try{const en=await grab('en.wikipedia.org');all=all.concat(en);}catch(e){}}
 return all;
@@ -1601,7 +1621,7 @@ let cards='',more='';
 if(hubTab==='news'){
 if(!newsInit&&!NEWS.length){cards=railSkeleton();}
 else if(!NEWS.length){cards=hubHint(meta.icon,'Berita terkini butuh koneksi internet untuk dimuat. Coba lagi saat online.');}
-else{cards=NEWS.map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);return railCard(a,meta.icon,(f.dateLabel?('Berita \u00b7 '+f.dateLabel):'Peristiwa terkini'),f.text);}).join('');if(newsLoading)cards+=railSkeleton();}
+else{cards=NEWS.map((f,i)=>{const a=mkFactArticle(f,'Peristiwa Terkini','news',i);const _nk=(f.kind||'Peristiwa terkini')+(f.dateLabel?(' \u00b7 '+f.dateLabel):'');return railCard(a,meta.icon,_nk,f.text);}).join('');if(newsLoading)cards+=railSkeleton();}
 }else if(hubTab==='history'){
 if(HISTORY===null){cards=railSkeleton();}
 else if(!HISTORY.length){cards=hubHint(meta.icon,'Peristiwa untuk tanggal ini belum bisa dimuat \u2014 butuh koneksi internet untuk mengambil data Hari Ini dalam Sejarah.');}
