@@ -501,6 +501,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 
 <!-- SCROLL AREA -->
 <div class="topsearch" id="topSearch"><div class="topsearch-inner"><input id="homeSearchInput" type="text" placeholder="Cari insight, topik, tokoh..." /><button id="homeSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div></div>
+<div class="topsearch" id="topSearchGal"><div class="topsearch-inner"><input id="galSearchInput" type="text" placeholder="Cari foto di Kanvas..." /><button id="galSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div></div>
 <main class="scroll" id="scroll">
 
 <!-- HOME / FEED -->
@@ -522,7 +523,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <!-- GALLERY -->
 <section class="view" id="view-gallery">
 <div class="gal-head"><p>Jelajahi dunia lewat gambar — ketuk untuk membaca kisahnya.</p></div>
-<div class="gal-search"><input id="galSearchInput" type="text" placeholder="Cari foto di Kanvas..." /><button id="galSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div>
+
 <div class="chips" id="galleryChips"></div>
 <div class="gal-grid" id="galleryGrid"></div>
 <div id="galleryMore" class="load-more"></div>
@@ -1016,7 +1017,7 @@ let ovMode='article',ovTimer=null,ovImgItems=[];
 function openSearch(){const ov=$('#searchOverlay');if(!ov)return;ovMode=(lastView==='gallery')?'gallery':'article';const inp=$('#ovSearchInput');if(inp)inp.placeholder=ovMode==='gallery'?'Cari gambar di Kanvas...':'Cari insight, topik, tokoh...';ov.classList.add('open');const res=$('#ovResults');if(res)res.innerHTML='<div class="ov-hint">Ketik kata kunci untuk mencari secara live...</div>';setTimeout(()=>{if(inp){inp.focus();if(inp.value.trim())onOvSearch(inp.value);}},60);}
 function closeSearch(){const ov=$('#searchOverlay');if(ov)ov.classList.remove('open');}
 async function liveImageSearch(q){const results=await Promise.all(GALLERY_SOURCES.map(s=>{try{return Promise.resolve(s.fetch(q,q,0)).catch(()=>[]);}catch(e){return Promise.resolve([]);}}));let items=[];results.forEach(r=>{if(Array.isArray(r))items=items.concat(r);});const seen={},out=[];items.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;out.push(a);}});return out;}
-async function liveArticleSearch(q){let items=[];try{items=await searchWiki(q,25);}catch(e){items=[];}if(!items.length){try{items=await searchArticles(q,'var(--sage)',q,0,20);}catch(e){items=[];}}const t=q.toLowerCase();const seen={};items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});const local=ARTICLES.filter(a=>{const k=(a.title||'').toLowerCase();if(seen[a.id]||seen[k])return false;return a.title.toLowerCase().includes(t)||(a.excerpt||'').toLowerCase().includes(t)||(a.catName||'').toLowerCase().includes(t)||(a.author||'').toLowerCase().includes(t);});return items.concat(local);}
+async function liveArticleSearch(q){let items=[];try{items=await searchArticles(q,'var(--sage)',q,0,24);}catch(e){items=[];}if(items.length<8){try{const alt=await searchWiki(q,25);const seenw={};items.forEach(function(a){seenw[(a.title||'').toLowerCase()]=1;});alt.forEach(function(a){const k=(a.title||'').toLowerCase();if(k&&!seenw[k]){seenw[k]=1;items.push(a);}});}catch(e){}}const t=q.toLowerCase();const seen={};items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});const local=ARTICLES.filter(a=>{const k=(a.title||'').toLowerCase();if(seen[a.id]||seen[k])return false;return a.title.toLowerCase().includes(t)||(a.excerpt||'').toLowerCase().includes(t)||(a.catName||'').toLowerCase().includes(t)||(a.author||'').toLowerCase().includes(t);});return items.concat(local);}
 function renderOvArticles(items,q){const res=$('#ovResults');if(!res)return;if(!items.length){res.innerHTML=emptyMsg('Tidak ada hasil untuk "'+esc(q)+'".');return;}regArticles(items);res.innerHTML='<div class="feed" style="padding:14px 20px 40px">'+items.map(cardHTML).join('')+'</div>';markSaved();}
 function renderOvGallery(items,q){const res=$('#ovResults');if(!res)return;if(!items.length){res.innerHTML=emptyMsg('Tidak ada gambar untuk "'+esc(q)+'".');return;}regArticles(items);ovImgItems=items;let a='',b='';const h=[0,0];items.forEach(it=>{const r=galRatio(it);const ci=h[0]<=h[1]?0:1;h[ci]+=1/r+0.12;const card=galleryCardHTML(it,r);if(ci===0)a+=card;else b+=card;});res.innerHTML='<div class="gal-grid"><div class="gal-col">'+a+'</div><div class="gal-col">'+b+'</div></div>';}
 function onOvSearch(q){q=(q||'').trim();clearTimeout(ovTimer);const res=$('#ovResults');if(!res)return;if(!q){res.innerHTML='<div class="ov-hint">Ketik kata kunci untuk mencari secara live...</div>';return;}res.innerHTML=ovMode==='gallery'?('<div class="gal-grid">'+gallerySkeleton()+'</div>'):('<div style="padding:14px 20px 40px">'+skeleton()+'</div>');ovTimer=setTimeout(async()=>{const cur=q;if(ovMode==='gallery'){const items=await liveImageSearch(cur);const now=$('#ovSearchInput');if(now&&now.value.trim()===cur)renderOvGallery(items,cur);}else{const items=await liveArticleSearch(cur);const now=$('#ovSearchInput');if(now&&now.value.trim()===cur)renderOvArticles(items,cur);}},420);}
@@ -1433,7 +1434,7 @@ const w=$('#galleryChips');if(!w)return;
 if(w.dataset.active===galleryTheme)return;
 w.innerHTML='';
 const sc=el('div','chips-scroll');
-GALLERY_THEMES.forEach(t=>{const b=el('button','chip'+(galleryTheme===t.id?' active':''));b.textContent=t.name;b.onclick=()=>{galQuery='';const _gi=$('#galSearchInput');if(_gi)_gi.value='';const _gc=$('#galSearchClear');if(_gc)_gc.style.display='none';if(galleryTheme===t.id){renderGallery();return;}galleryTheme=t.id;renderGallery();if(!galleryCache[t.id])loadGallery(true);$('#scroll').scrollTo({top:0});};sc.appendChild(b);});
+GALLERY_THEMES.forEach(t=>{const b=el('button','chip'+(galleryTheme===t.id?' active':''));b.textContent=t.name;b.onclick=()=>{galQuery='';const _gi=$('#galSearchInput');if(_gi)_gi.value='';const _gc=$('#galSearchClear');if(_gc)_gc.style.display='none';const _tg=$('#topSearchGal');if(_tg)_tg.classList.remove('open');if(galleryTheme===t.id){renderGallery();return;}galleryTheme=t.id;renderGallery();if(!galleryCache[t.id])loadGallery(true);$('#scroll').scrollTo({top:0});};sc.appendChild(b);});
 w.appendChild(sc);
 w.dataset.active=galleryTheme;
 const act=sc.querySelector('.chip.active');if(act)sc.scrollLeft=Math.max(0,act.offsetLeft-sc.clientWidth/2+act.offsetWidth/2);
@@ -1598,7 +1599,7 @@ function showView(name,fromReader,updateNav=true){
 document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
 $('#view-'+name).classList.add('active');
 const _bn=$('#bottomnav');if(_bn)_bn.style.display=(name==='read')?'none':'flex';
-const _st=$('#searchTop');if(_st)_st.style.display=(['home','gallery'].includes(name))?'':'none';const _ts=$('#topSearch');if(_ts&&name!=='home')_ts.classList.remove('open');
+const _st=$('#searchTop');if(_st)_st.style.display=(['home','gallery'].includes(name))?'':'none';const _ts=$('#topSearch');if(_ts&&name!=='home')_ts.classList.remove('open');const _tg=$('#topSearchGal');if(_tg&&name!=='gallery')_tg.classList.remove('open');
 const _lbv=$('#liveBtn');if(_lbv)_lbv.style.display=(name==='read')?'none':'';
 if(name!=='read')setTopbar(name);
 if(name!=='read'){lastView=name;}
@@ -1629,13 +1630,13 @@ if(introEl)introEl.innerHTML='<span class="ai-typing">Membuat ringkasan dengan A
 if(ul)ul.innerHTML='<li><span class="ai-typing">Menghasilkan takeaways\u2026</span></li>';
 try{
 await ensureFull(a);
-const sys='Kamu membaca sebuah artikel lalu membalas HANYA JSON valid tanpa markdown, format persis: {"summary":"...","takeaways":["...","..."]}. "summary": ringkasan artikel dalam Bahasa Indonesia yang jelas dan cukup lengkap (boleh 3-5 kalimat). "takeaways": 4-6 poin penting, tiap poin kalimat utuh dan boleh agak panjang. Hanya berdasarkan isi artikel, jangan mengarang.';
+const sys='Kamu membaca sebuah artikel lalu membalas HANYA JSON valid tanpa markdown, format persis: {"summary":"...","takeaways":["...","..."]}. "summary": ringkasan artikel dalam Bahasa Indonesia berupa 2-3 paragraf yang mengalir dan enak dibaca, pisahkan tiap paragraf dengan baris kosong (dua baris enter). "takeaways": 4-6 poin penting, tiap poin kalimat utuh dan boleh agak panjang. Hanya berdasarkan isi artikel, jangan mengarang.';
 const usr='Judul: '+a.title+'\n\nArtikel:\n'+articleText(a);
-const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:1200,response_format:{type:'json_object'}},null);
+const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:1700,response_format:{type:'json_object'}},null);
 let sum='',items=[];
 try{const clean0=(out||'').replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();const j=JSON.parse(clean0);sum=String(j.summary||'').trim();items=(Array.isArray(j.takeaways)?j.takeaways:[]).map(function(s){return String(s).trim();}).filter(function(s){return s.length>2;});}catch(e){}
-if(!sum&&out)sum=clean(out).slice(0,700);
-if(sum){a.excerpt=sum;a.aiSummary=sum;if(introEl){introEl.classList.add('ai-full');introEl.innerHTML=esc(sum);}}
+if(!sum&&out){try{const s2=out.slice(out.indexOf('{'),out.lastIndexOf('}')+1);const j2=JSON.parse(s2);sum=String(j2.summary||'').trim();if(!items.length&&Array.isArray(j2.takeaways))items=j2.takeaways.map(function(x){return String(x).trim();}).filter(function(x){return x.length>2;});}catch(_e){}}
+if(sum){a.excerpt=sum;a.aiSummary=sum;if(introEl){introEl.classList.add('ai-full');const _nl=String.fromCharCode(10);const _paras=sum.split(_nl).map(function(s){return s.trim();}).filter(Boolean);introEl.innerHTML=_paras.length?_paras.map(function(p){return esc(p);}).join('<br><br>'):esc(sum);}}
 else if(introEl)introEl.innerHTML=introOld;
 if(items.length){a.takeaways=items;if(ul&&box){box.classList.add('ai-full');ul.innerHTML=items.map(function(t){return '<li>'+svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')+'<span>'+esc(t)+'</span></li>';}).join('');}}
 else if(ul)ul.innerHTML=ulOld;
@@ -1662,12 +1663,12 @@ const card=e.target.closest('[data-id]');
 if(card){openArticle(card.dataset.id);return;}
 });
 document.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>showView(n.dataset.nav);});
-$('#searchTop').onclick=()=>{if(galleryVisible()||(lastView||'')==='gallery'){const gi=$('#galSearchInput');if(gi){gi.focus();const s=$('#scroll');if(s)s.scrollTo({top:0,behavior:'smooth'});}}else if(homeVisible()||(lastView||'')==='home'){const ts=$('#topSearch');if(ts){const willOpen=!ts.classList.contains('open');ts.classList.toggle('open',willOpen);if(willOpen){const hi=$('#homeSearchInput');if(hi)hi.focus();}}}else openSearch();};
+$('#searchTop').onclick=()=>{if(galleryVisible()||(lastView||'')==='gallery'){const tg=$('#topSearchGal');if(tg){const willOpen=!tg.classList.contains('open');tg.classList.toggle('open',willOpen);if(willOpen){const gi=$('#galSearchInput');if(gi)gi.focus();}}}else if(homeVisible()||(lastView||'')==='home'){const ts=$('#topSearch');if(ts){const willOpen=!ts.classList.contains('open');ts.classList.toggle('open',willOpen);if(willOpen){const hi=$('#homeSearchInput');if(hi)hi.focus();}}}else openSearch();};
 const _ovi=$('#ovSearchInput');if(_ovi)_ovi.addEventListener('input',e=>onOvSearch(e.target.value));
 const _gsi=$('#galSearchInput');if(_gsi){_gsi.addEventListener('input',e=>{const c=$('#galSearchClear');if(c)c.style.display=e.target.value.trim()?'':'none';});_gsi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();onGalSearch(e.target.value);}});}
 const _hsi=$('#homeSearchInput');if(_hsi){_hsi.addEventListener('input',e=>{const c=$('#homeSearchClear');if(c)c.style.display=e.target.value.trim()?'':'none';});_hsi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();onHomeSearch(e.target.value);}});}
 const _hsc=$('#homeSearchClear');if(_hsc)_hsc.onclick=function(){const hi=$('#homeSearchInput');if(hi){hi.value='';}onHomeSearch('');const ts=$('#topSearch');if(ts)ts.classList.remove('open');};
-const _gsc=$('#galSearchClear');if(_gsc)_gsc.onclick=function(){const gi=$('#galSearchInput');if(gi){gi.value='';gi.focus();}onGalSearch('');};
+const _gsc=$('#galSearchClear');if(_gsc)_gsc.onclick=function(){const gi=$('#galSearchInput');if(gi){gi.value='';}onGalSearch('');const tg=$('#topSearchGal');if(tg)tg.classList.remove('open');};
 const _ovc=$('#ovCancel');if(_ovc)_ovc.onclick=()=>closeSearch();
 const _ovr=$('#ovResults');if(_ovr)_ovr.addEventListener('click',e=>{if(e.target.closest('[data-save]'))return;const c=e.target.closest('[data-id]');if(!c)return;e.stopPropagation();const id=c.dataset.id;if(ovMode==='gallery')openArticle(id,ovImgItems);else openArticle(id);closeSearch();});
 const _pt=$('#profileTop');if(_pt)_pt.onclick=()=>showView('profile');
