@@ -213,7 +213,7 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .card-full .metatop .readflag svg{width:12px;height:12px}
 .card-full .intro{font-size:14.5px;line-height:1.65;color:#4a4a46;margin-bottom:15px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .mini-take{background:var(--sage-tint-2);border:1px solid var(--sage-tint);border-radius:12px;padding:13px 14px;margin-bottom:15px}
-.mini-take h5{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:9px}
+.mini-take h5{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:9px}
 .mini-take h5 svg{width:14px;height:14px}
 .mini-take ul{list-style:none;display:flex;flex-direction:column;gap:8px}
 .mini-take li{display:flex;gap:8px;font-size:13px;color:var(--ink);line-height:1.45}
@@ -961,7 +961,7 @@ return `<article class="card-full${read?' read':''}" data-id="${a.id}">
 <div class="metatop"><span class="avatar">${initials(a.author)}</span><span>${a.author}</span><span class="dot"></span><span>${a.rt} min baca</span>${read?`<span class="dot"></span><span class="readflag">${svg('<path d="M20 6 9 17l-5-5"/>')} Selesai</span>`:''}</div>
 <p class="intro">${intro}</p>
 <div class="mini-take">
-<h5>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h5>
+<h5>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways<button class="ta-ai-btn" data-aitake="${a.id}">${svg('<path d="m12 3 1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4Z"/>')} AI</button></h5>
 <ul>${a.takeaways.slice(0,2).map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
 </div>
 <button class="readmore" data-id="${a.id}">Baca selengkapnya ${svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>')}</button>
@@ -1545,8 +1545,26 @@ function refreshAll(){renderFeed();if($('#view-library').classList.contains('act
 document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});
 }
 
+async function runHomeTakeaways(id,btn){
+if(_aiBusy)return;const a=ARTICLE_INDEX[id];if(!a)return;_aiBusy=true;
+if(btn)btn.disabled=true;
+const box=btn?btn.closest('.mini-take'):null;const ul=box?box.querySelector('ul'):null;const old=ul?ul.innerHTML:'';
+if(ul)ul.innerHTML='<li><span class="ai-typing">Menghasilkan takeaways dengan AI\u2026</span></li>';
+try{
+await ensureFull(a);
+const sys='Buat 3-4 key takeaways paling penting dari artikel dalam Bahasa Indonesia. Balas HANYA daftar poin, satu baris per poin, tiap baris diawali "- ". Tanpa judul atau pengantar. Tiap poin ringkas (maksimal 18 kata) dan hanya berdasarkan isi artikel.';
+const usr='Judul: '+a.title+'\n\nArtikel:\n'+articleText(a);
+const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:400},null);
+const items=(out||'').split('\n').map(function(l){return l.replace(/^\s*[-\u2022*\d.)]+\s*/,'').trim();}).filter(function(l){return l.length>2;}).slice(0,6);
+if(items.length){a.takeaways=items;if(ul)ul.innerHTML=items.slice(0,2).map(function(t){return '<li>'+svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')+'<span>'+esc(t)+'</span></li>';}).join('');}
+else if(ul)ul.innerHTML=old;
+}catch(e){if(ul)ul.innerHTML=old;toast('Gagal memuat AI. Pastikan sudah deploy di Vercel + GROQ_API_KEY.');}
+if(btn)btn.disabled=false;_aiBusy=false;
+}
 /* ============ EVENTS ============ */
 document.addEventListener('click',e=>{
+const at=e.target.closest('[data-aitake]');
+if(at){e.stopPropagation();e.preventDefault();runHomeTakeaways(at.dataset.aitake,at);return;}
 const sv=e.target.closest('[data-save]');
 if(sv){e.stopPropagation();toggleSave(sv.dataset.save);return;}
 const rm=e.target.closest('.readmore');
