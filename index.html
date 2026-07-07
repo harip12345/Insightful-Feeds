@@ -291,6 +291,11 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .ta-ai-btn:active{transform:scale(.95)}
 .ta-ai-btn:disabled{opacity:.6;cursor:default}
 .ta-ai-btn svg{width:13px;height:13px}
+.sum-block{margin-bottom:15px}
+.sum-head{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--sage);margin-bottom:8px}
+.sum-head svg{width:14px;height:14px}
+.card-full .intro.ai-full{-webkit-line-clamp:unset;display:block;color:var(--ink)}
+.mini-take.ai-full li span{-webkit-line-clamp:unset;display:block}
 .article p{margin-bottom:18px}
 .article h3{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--ink);margin:26px 0 12px}
 .article blockquote{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--sage);border-left:3px solid var(--sage-300);padding:4px 0 4px 18px;margin:24px 0}
@@ -394,6 +399,10 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 .gal-head h2{font-family:var(--serif);font-size:22px;color:var(--ink)}
 .gal-head p{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4}
 .gal-grid{display:flex;gap:12px;align-items:flex-start;padding:14px 20px 24px}
+.gal-search{position:relative;padding:2px 20px 8px}
+.gal-search input{width:100%;font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:10px 40px 10px 14px;outline:none}
+.gal-search input:focus{border-color:var(--sage)}
+.gal-clear{position:absolute;right:30px;top:calc(50% - 3px);transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:4px}
 .gal-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:12px}
 .gal-card{margin:0;position:relative;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:var(--shadow-sm);background:var(--sage-tint);display:block;transition:transform .16s;aspect-ratio:1}
 .gal-card:active{transform:scale(.98)}
@@ -490,13 +499,14 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <!-- HOME / FEED -->
 <section class="view active" id="view-home">
 <div class="chips" id="feedChips"></div>
+<div class="gal-search home-search"><input id="homeSearchInput" type="text" placeholder="Cari insight, topik, tokoh..." /><button id="homeSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div>
 <div id="reflectSlot"></div>
 <div id="hubSlot"></div>
 
 <div class="sec-head"><div><h2>Trending Now</h2><div class="sub">Sorotan pilihan editor</div></div></div>
 <div class="trend-rail" id="trendRail"></div>
 
-<div class="sec-head"><div><h2>Your Daily Feed</h2><div class="sub">Baca langsung, tanpa terburu-buru</div></div><a id="refreshFeed">Refresh</a></div>
+<div class="sec-head" id="feedHead"><div><h2>Your Daily Feed</h2><div class="sub">Baca langsung, tanpa terburu-buru</div></div><a id="refreshFeed">Refresh</a></div>
 <div class="subchips" id="subChips" style="display:none"></div>
 <div class="feed" id="feedList"></div>
 <div class="loadmore-wrap" id="loadMoreWrap"></div>
@@ -518,6 +528,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <!-- GALLERY -->
 <section class="view" id="view-gallery">
 <div class="gal-head"><p>Jelajahi dunia lewat gambar — ketuk untuk membaca kisahnya.</p></div>
+<div class="gal-search"><input id="galSearchInput" type="text" placeholder="Cari foto di Kanvas..." /><button id="galSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div>
 <div class="chips" id="galleryChips"></div>
 <div class="gal-grid" id="galleryGrid"></div>
 <div id="galleryMore" class="load-more"></div>
@@ -807,7 +818,7 @@ if(isTopicCat(activeCat)){
 const cat=resolveCat(activeCat)||{name:activeCat};
 const b=el('button','chip active topic-selected');
 b.innerHTML=svg('<path d="m15 18-6-6 6-6"/>','chip-back')+'<span>'+esc(cat.label||cat.name)+'</span>';
-b.onclick=()=>{activeCat='all';activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+b.onclick=()=>{clearHomeSearch();activeCat='all';activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 wrap.appendChild(b);
 }else{
 const all=[{id:'all',name:'Untukmu'}].concat(TOPICS);
@@ -815,7 +826,7 @@ const cs=el('div','chips-scroll');
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
 b.textContent=c.label||c.name;
-b.onclick=()=>{activeCat=c.id;activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
+b.onclick=()=>{clearHomeSearch();activeCat=c.id;activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 cs.appendChild(b);
 });
 wrap.appendChild(cs);
@@ -889,10 +900,10 @@ const btn=$('#aiGenTakeaways');if(btn)btn.disabled=true;
 const ul=$('#view-read .takeaways ul');const old=ul?ul.innerHTML:'';
 if(ul)ul.innerHTML='<li><span class="ai-typing">Menghasilkan takeaways dengan AI\u2026</span></li>';
 await ensureFull(a);
-const sys='Buat 4-5 key takeaways paling penting dari artikel dalam Bahasa Indonesia. Balas HANYA daftar poin, satu baris per poin, tiap baris diawali "- ". Tanpa judul atau pengantar. Tiap poin ringkas (maksimal 20 kata) dan hanya berdasarkan isi artikel.';
+const sys='Buat 4-5 key takeaways paling penting dari artikel dalam Bahasa Indonesia. Balas HANYA daftar poin, satu baris per poin, tiap baris diawali "- ". Tanpa judul atau pengantar. Tiap poin berupa kalimat utuh dan boleh agak panjang, hanya berdasarkan isi artikel.';
 const usr='Judul: '+a.title+'\n\nArtikel:\n'+articleText(a);
 try{
-const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:500},null);
+const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:1000},null);
 const items=(out||'').split('\n').map(function(l){return l.replace(/^\s*[-\u2022*\d.)]+\s*/,'').trim();}).filter(function(l){return l.length>2;}).slice(0,6);
 if(items.length&&ul){ul.innerHTML=items.map(function(t){return '<li>'+svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')+'<span>'+esc(t)+'</span></li>';}).join('');a.takeaways=items;}
 else if(ul)ul.innerHTML=old;
@@ -959,9 +970,9 @@ return `<article class="card-full${read?' read':''}" data-id="${a.id}">
 <div class="body">
 <h3>${a.title}</h3>
 <div class="metatop"><span class="avatar">${initials(a.author)}</span><span>${a.author}</span><span class="dot"></span><span>${a.rt} min baca</span>${read?`<span class="dot"></span><span class="readflag">${svg('<path d="M20 6 9 17l-5-5"/>')} Selesai</span>`:''}</div>
-<p class="intro">${intro}</p>
+<div class="sum-block"><h5 class="sum-head">${svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>')} Ringkasan<button class="ta-ai-btn" data-aitake="${a.id}">${svg('<path d="m12 3 1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4Z"/>')} AI</button></h5><p class="intro">${intro}</p></div>
 <div class="mini-take">
-<h5>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways<button class="ta-ai-btn" data-aitake="${a.id}">${svg('<path d="m12 3 1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4Z"/>')} AI</button></h5>
+<h5>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h5>
 <ul>${a.takeaways.slice(0,2).map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
 </div>
 <button class="readmore" data-id="${a.id}">Baca selengkapnya ${svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>')}</button>
@@ -982,10 +993,11 @@ const ex=(p.extract||'').replace(/\n{2,}/g,'\n').trim();const sents=sentences(ex
 const img=(p.thumbnail&&p.thumbnail.source)||(p.original&&p.original.source)||'';
 return {id:'w_'+catId+'_'+p.pageid,cat:catId,catName:catName||catId,title:p.title,wikiTitle:p.title,kind:classifyKind(p.title,ex),full:false,author:'Wikipedia',role:'Ensiklopedia bebas',rt:estRead(ex),bg:bg||'var(--sage)',image:img,iw:(p.thumbnail&&p.thumbnail.width)||0,ih:(p.thumbnail&&p.thumbnail.height)||0,excerpt:clean(sents[0]||ex).slice(0,170),takeaways:(sents.slice(0,3).length?sents.slice(0,3):[clean(ex).slice(0,120)]).map(clean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. '+(p.canonicalurl||('https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.title).replace(/ /g,'_'))))]};
 }
+function upWiki(u,w){if(!u)return u;return u.replace(/\/(\d{2,4})px-/,'/'+(w||1000)+'px-');}
 function wikiRestToArticle(p,catId,catName,bg){
 const desc=p.description||'';
 const snip=clean((p.excerpt||'').replace(/<[^>]+>/g,''));
-const thumb=(p.thumbnail&&p.thumbnail.url)?('https:'+p.thumbnail.url):'';
+const thumb=(p.thumbnail&&p.thumbnail.url)?upWiki('https:'+p.thumbnail.url,1000):'';
 const ex=snip||desc||p.title;
 return {id:'w_'+catId+'_'+p.id,cat:catId,catName:catName||catId,title:p.title,wikiTitle:p.title,kind:desc||'artikel',full:false,author:'Wikipedia',role:'Ensiklopedia bebas',rt:3,bg:bg||'var(--sage)',image:thumb,iw:(p.thumbnail&&p.thumbnail.width)||0,ih:(p.thumbnail&&p.thumbnail.height)||0,excerpt:(((desc?(desc+' \u2014 '):'')+snip).slice(0,180))||p.title,takeaways:[ex].filter(Boolean),body:buildBody(ex),cites:[p.title+'. Wikipedia \u2014 Ensiklopedia Bebas. https://id.wikipedia.org/wiki/'+encodeURIComponent(String(p.key||p.title))]};
 }
@@ -1033,12 +1045,14 @@ if(gst&&!gst.loading&&!gst.done&&sc.scrollHeight-sc.scrollTop-sc.clientHeight<90
 return;
 }
 if(!feedVisible())return;
+if(homeQuery)return;
 const st=feedCache[activeCat];if(!st||st.loading||st.done)return;
 if(sc.scrollHeight-sc.scrollTop-sc.clientHeight<800)loadMore(false);
 });
 }
 function maybeAutoFill(){
 if(!feedVisible())return;
+if(homeQuery)return;
 const sc=$('#scroll');if(!sc)return;
 const st=feedCache[activeCat];if(!st||st.loading||st.done)return;
 if(sc.scrollHeight-sc.clientHeight<220)loadMore(false);
@@ -1052,6 +1066,7 @@ if(st.done){wrap.innerHTML=st.items.length?'<div class="more-end">Kamu sudah di 
 wrap.innerHTML='';
 }
 function renderFeed(){
+if(homeQuery){if(homeSearchState)renderHomeSearch(homeQuery);else onHomeSearch(homeQuery);return;}
 let st=feedCache[activeCat];
 if(!st){loadMore(true);st=feedCache[activeCat];}
 const items=(st&&st.items.length)?st.items:((activeCat==='all')?ARTICLES:[]);
@@ -1125,7 +1140,42 @@ results.forEach(r=>{if(r.status==='fulfilled')r.value.pages.forEach(p=>{const k=
 if(pages.length<3){try{return (await searchArticles(t.q,t.bg,t.label||t.name,0,limit||8)).slice(0,limit||8);}catch(e){return [];}}
 return shuffle(pages).slice(0,limit||8).map(p=>toArticle(p,slug(t.q),t.label||t.name,t.bg));
 }
+let homeQuery='';let homeSearchState=null;let homeTimer=null;
+function homeVisible(){const v=document.getElementById('view-home');return v&&v.classList.contains('active');}
+function clearHomeSearch(){homeQuery='';homeSearchState=null;const hi=$('#homeSearchInput');if(hi)hi.value='';const hc=$('#homeSearchClear');if(hc)hc.style.display='none';}
+function scrollToFeed(){const fh=$('#feedHead')||$('#feedList');if(fh)fh.scrollIntoView({behavior:'smooth',block:'start'});}
+function onHomeSearch(q){
+q=(q||'').trim();
+clearTimeout(homeTimer);
+const clr=$('#homeSearchClear');if(clr)clr.style.display=q?'':'none';
+const list=$('#feedList');
+if(!q){homeQuery='';homeSearchState=null;renderFeed();return;}
+const wasEmpty=!homeQuery;
+homeQuery=q;
+if(list)list.innerHTML=skeleton();
+const wrap=$('#loadMoreWrap');if(wrap)wrap.innerHTML='<div class="more-end"><span class="spin"></span> Mencari\u2026</div>';
+if(wasEmpty)setTimeout(scrollToFeed,60);
+homeTimer=setTimeout(async()=>{
+const cur=q;
+let items=[];try{items=await liveArticleSearch(cur);}catch(e){items=[];}
+if(homeQuery!==cur)return;
+homeSearchState={items:items,loading:false,done:true};
+renderHomeSearch(cur);
+},420);
+}
+function renderHomeSearch(q){
+const list=$('#feedList');if(!list)return;
+const items=(homeSearchState&&homeSearchState.items)||[];
+const wrap=$('#loadMoreWrap');
+if(!items.length){list.innerHTML=emptyMsg('Tidak ada insight untuk \u201c'+esc(q)+'\u201d.');if(wrap)wrap.innerHTML='';return;}
+regArticles(items);
+list.innerHTML=items.map(cardFullHTML).join('');
+if(wrap)wrap.innerHTML='<div class="more-end">'+items.length+' hasil untuk \u201c'+esc(q)+'\u201d</div>';
+markSaved();
+scrollToFeed();
+}
 async function loadMore(reset){
+if(homeQuery)return;
 const cat=activeCat;
 let st=feedCache[cat];
 if(reset||!st){st={items:[],offset:0,rot:0,cont:null,catDone:false,done:false,loading:false};feedCache[cat]=st;}
@@ -1194,6 +1244,7 @@ try{let items=await searchWiki(q,25).catch(()=>[]);if(!items.length){items=await
 if(items.length){discResults(items,`Hasil untuk \u201c${q}\u201d (${items.length})`);}
 else{renderDiscList(q);}
 }catch(e){renderDiscList(q);}
+const _dh=document.getElementById('discResultsHead');if(_dh)_dh.scrollIntoView({behavior:'smooth',block:'start'});
 },450);
 }
 
@@ -1392,12 +1443,13 @@ const w=$('#galleryChips');if(!w)return;
 if(w.dataset.active===galleryTheme)return;
 w.innerHTML='';
 const sc=el('div','chips-scroll');
-GALLERY_THEMES.forEach(t=>{const b=el('button','chip'+(galleryTheme===t.id?' active':''));b.textContent=t.name;b.onclick=()=>{if(galleryTheme===t.id)return;galleryTheme=t.id;renderGallery();if(!galleryCache[t.id])loadGallery(true);$('#scroll').scrollTo({top:0});};sc.appendChild(b);});
+GALLERY_THEMES.forEach(t=>{const b=el('button','chip'+(galleryTheme===t.id?' active':''));b.textContent=t.name;b.onclick=()=>{galQuery='';const _gi=$('#galSearchInput');if(_gi)_gi.value='';const _gc=$('#galSearchClear');if(_gc)_gc.style.display='none';if(galleryTheme===t.id){renderGallery();return;}galleryTheme=t.id;renderGallery();if(!galleryCache[t.id])loadGallery(true);$('#scroll').scrollTo({top:0});};sc.appendChild(b);});
 w.appendChild(sc);
 w.dataset.active=galleryTheme;
 const act=sc.querySelector('.chip.active');if(act)sc.scrollLeft=Math.max(0,act.offsetLeft-sc.clientWidth/2+act.offsetWidth/2);
 }
 function renderGallery(){
+if(galQuery){renderGalleryChips();if(galSearchState)renderGalSearch(galQuery);else onGalSearch(galQuery);return;}
 renderGalleryChips();
 const st=galleryCache[galleryTheme];
 const grid=$('#galleryGrid');if(!grid)return;
@@ -1489,7 +1541,39 @@ const GALLERY_SOURCES=[
 {key:'inat',lang:'en',fetch:(q,name)=>fetchINat(q,name,25)},
 {key:'nasa',lang:'en',fetch:(q,name)=>fetchNASA(q,name,25)}
 ];
+let galQuery='';let galSearchState=null;let galTimer=null;
+function onGalSearch(q){
+q=(q||'').trim();
+clearTimeout(galTimer);
+const clr=$('#galSearchClear');if(clr)clr.style.display=q?'':'none';
+const grid=$('#galleryGrid');
+if(!q){galQuery='';galSearchState=null;if(grid){grid.dataset.gstate='';grid._rendered=0;grid._h=[0,0];}renderGallery();return;}
+galQuery=q;
+if(grid){grid.dataset.gstate='search-skel';grid.innerHTML=gallerySkeleton();}
+const more=$('#galleryMore');if(more)more.innerHTML='<div class="more-end"><span class="spin"></span> Mencari foto\u2026</div>';
+galTimer=setTimeout(async()=>{
+const cur=q;
+let items=[];try{items=await liveImageSearch(cur);}catch(e){items=[];}
+if(galQuery!==cur)return;
+galSearchState={items:items,loading:false,done:true};
+renderGalSearch(cur);
+},420);
+}
+function renderGalSearch(q){
+const grid=$('#galleryGrid');if(!grid)return;
+const items=(galSearchState&&galSearchState.items)||[];
+const more=$('#galleryMore');
+if(!items.length){grid.dataset.gstate='search-empty';grid.innerHTML=emptyMsg('Tidak ada foto untuk \u201c'+esc(q)+'\u201d.');if(more)more.innerHTML='';return;}
+regArticles(items);
+grid.dataset.gstate='search:'+q;
+let a='',b='';const h=[0,0];
+items.forEach(function(it){const r=galRatio(it);const ci=h[0]<=h[1]?0:1;h[ci]+=1/r+0.12;const card=galleryCardHTML(it,r);if(ci===0)a+=card;else b+=card;});
+grid.innerHTML='<div class="gal-col">'+a+'</div><div class="gal-col">'+b+'</div>';
+if(more)more.innerHTML='<div class="more-end">'+items.length+' foto untuk \u201c'+esc(q)+'\u201d</div>';
+markSaved();
+}
 async function loadGallery(reset){
+if(galQuery)return;
 const cfg=galleryCfg();
 let st=galleryCache[cfg.id];
 if(reset||!st){st={items:[],loading:false,done:false,srcIdx:0,qi:0,offset:0};galleryCache[cfg.id]=st;}
@@ -1548,17 +1632,24 @@ document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',
 async function runHomeTakeaways(id,btn){
 if(_aiBusy)return;const a=ARTICLE_INDEX[id];if(!a)return;_aiBusy=true;
 if(btn)btn.disabled=true;
-const box=btn?btn.closest('.mini-take'):null;const ul=box?box.querySelector('ul'):null;const old=ul?ul.innerHTML:'';
-if(ul)ul.innerHTML='<li><span class="ai-typing">Menghasilkan takeaways dengan AI\u2026</span></li>';
+const card=btn?btn.closest('.card-full'):null;
+const introEl=card?card.querySelector('.intro'):null;const introOld=introEl?introEl.innerHTML:'';
+const box=card?card.querySelector('.mini-take'):null;const ul=box?box.querySelector('ul'):null;const ulOld=ul?ul.innerHTML:'';
+if(introEl)introEl.innerHTML='<span class="ai-typing">Membuat ringkasan dengan AI\u2026</span>';
+if(ul)ul.innerHTML='<li><span class="ai-typing">Menghasilkan takeaways\u2026</span></li>';
 try{
 await ensureFull(a);
-const sys='Buat 3-4 key takeaways paling penting dari artikel dalam Bahasa Indonesia. Balas HANYA daftar poin, satu baris per poin, tiap baris diawali "- ". Tanpa judul atau pengantar. Tiap poin ringkas (maksimal 18 kata) dan hanya berdasarkan isi artikel.';
+const sys='Kamu membaca sebuah artikel lalu membalas HANYA JSON valid tanpa markdown, format persis: {"summary":"...","takeaways":["...","..."]}. "summary": ringkasan artikel dalam Bahasa Indonesia yang jelas dan cukup lengkap (boleh 3-5 kalimat). "takeaways": 4-6 poin penting, tiap poin kalimat utuh dan boleh agak panjang. Hanya berdasarkan isi artikel, jangan mengarang.';
 const usr='Judul: '+a.title+'\n\nArtikel:\n'+articleText(a);
-const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:400},null);
-const items=(out||'').split('\n').map(function(l){return l.replace(/^\s*[-\u2022*\d.)]+\s*/,'').trim();}).filter(function(l){return l.length>2;}).slice(0,6);
-if(items.length){a.takeaways=items;if(ul)ul.innerHTML=items.slice(0,2).map(function(t){return '<li>'+svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')+'<span>'+esc(t)+'</span></li>';}).join('');}
-else if(ul)ul.innerHTML=old;
-}catch(e){if(ul)ul.innerHTML=old;toast('Gagal memuat AI. Pastikan sudah deploy di Vercel + GROQ_API_KEY.');}
+const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:1200,response_format:{type:'json_object'}},null);
+let sum='',items=[];
+try{const clean0=(out||'').replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();const j=JSON.parse(clean0);sum=String(j.summary||'').trim();items=(Array.isArray(j.takeaways)?j.takeaways:[]).map(function(s){return String(s).trim();}).filter(function(s){return s.length>2;});}catch(e){}
+if(!sum&&out)sum=clean(out).slice(0,700);
+if(sum){a.excerpt=sum;a.aiSummary=sum;if(introEl){introEl.classList.add('ai-full');introEl.innerHTML=esc(sum);}}
+else if(introEl)introEl.innerHTML=introOld;
+if(items.length){a.takeaways=items;if(ul&&box){box.classList.add('ai-full');ul.innerHTML=items.map(function(t){return '<li>'+svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')+'<span>'+esc(t)+'</span></li>';}).join('');}}
+else if(ul)ul.innerHTML=ulOld;
+}catch(e){if(introEl)introEl.innerHTML=introOld;if(ul)ul.innerHTML=ulOld;toast('Gagal memuat AI. Pastikan sudah deploy di Vercel + GROQ_API_KEY.');}
 if(btn)btn.disabled=false;_aiBusy=false;
 }
 /* ============ EVENTS ============ */
@@ -1576,13 +1667,17 @@ if(rit){const id=rit.dataset.rit;S.ritual[id]=!S.ritual[id];save();rit.classList
 const cat=e.target.closest('[data-cat]');
 if(cat){activeCat=cat.dataset.cat;showView('home');renderChips();renderFeed();return;}
 const galCard=e.target.closest('#galleryGrid [data-id]');
-if(galCard){const gs=galleryCache[galleryTheme];openArticle(galCard.dataset.id,(gs&&gs.items)||null);return;}
+if(galCard){const gs=galQuery?galSearchState:galleryCache[galleryTheme];openArticle(galCard.dataset.id,(gs&&gs.items)||null);return;}
 const card=e.target.closest('[data-id]');
 if(card){openArticle(card.dataset.id);return;}
 });
 document.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>showView(n.dataset.nav);});
-$('#searchTop').onclick=()=>openSearch();
+$('#searchTop').onclick=()=>{if(galleryVisible()||(lastView||'')==='gallery'){const gi=$('#galSearchInput');if(gi){gi.focus();const s=$('#scroll');if(s)s.scrollTo({top:0,behavior:'smooth'});}}else if(homeVisible()||(lastView||'')==='home'){const hi=$('#homeSearchInput');if(hi){const s=$('#scroll');if(s)s.scrollTo({top:0,behavior:'smooth'});hi.focus();}}else openSearch();};
 const _ovi=$('#ovSearchInput');if(_ovi)_ovi.addEventListener('input',e=>onOvSearch(e.target.value));
+const _gsi=$('#galSearchInput');if(_gsi)_gsi.addEventListener('input',e=>onGalSearch(e.target.value));
+const _hsi=$('#homeSearchInput');if(_hsi)_hsi.addEventListener('input',e=>onHomeSearch(e.target.value));
+const _hsc=$('#homeSearchClear');if(_hsc)_hsc.onclick=function(){const hi=$('#homeSearchInput');if(hi){hi.value='';hi.focus();}onHomeSearch('');};
+const _gsc=$('#galSearchClear');if(_gsc)_gsc.onclick=function(){const gi=$('#galSearchInput');if(gi){gi.value='';gi.focus();}onGalSearch('');};
 const _ovc=$('#ovCancel');if(_ovc)_ovc.onclick=()=>closeSearch();
 const _ovr=$('#ovResults');if(_ovr)_ovr.addEventListener('click',e=>{if(e.target.closest('[data-save]'))return;const c=e.target.closest('[data-id]');if(!c)return;e.stopPropagation();const id=c.dataset.id;if(ovMode==='gallery')openArticle(id,ovImgItems);else openArticle(id);closeSearch();});
 const _pt=$('#profileTop');if(_pt)_pt.onclick=()=>showView('profile');
