@@ -501,7 +501,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 
 <!-- SCROLL AREA -->
 <div class="topsearch" id="topSearch"><div class="topsearch-inner"><input id="homeSearchInput" type="text" placeholder="Cari insight, topik, tokoh..." /><button id="homeSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div></div>
-<div class="topsearch" id="topSearchGal"><div class="topsearch-inner"><input id="galSearchInput" type="text" placeholder="Cari foto di Kanvas..." /><button id="galSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div></div>
+<div class="topsearch" id="topSearchGal"><div class="topsearch-inner"><input id="galSearchInput" type="text" placeholder="Cari di Discover..." /><button id="galSearchClear" class="gal-clear" aria-label="Bersihkan" style="display:none">✕</button></div></div>
 <main class="scroll" id="scroll">
 
 <!-- HOME / FEED -->
@@ -594,8 +594,8 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <span class="lb">Home</span>
 </button>
 <button class="nav-item" data-nav="gallery">
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="9" r="1.6"/><path d="m21 15-5-4.5L5 20"/></svg>
-<span class="lb">Kanvas</span>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+<span class="lb">Discover</span>
 </button>
 <button class="nav-item" data-nav="library">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5"/><path d="M4 5.5V19a2 2 0 0 0 2 2h14"/><path d="M4 5.5A2.5 2.5 0 0 0 6.5 8H20"/></svg>
@@ -878,7 +878,7 @@ if(_aiBusy)return;const inp=$('#aiAsk');if(!inp)return;const q=(inp.value||'').t
 inp.value='';_aiBusy=true;aiAddMsg('user',esc(q));
 await ensureFull(a);
 const bot=aiAddMsg('bot','<span class="ai-typing">Berpikir\u2026</span>');
-const sys='Jawab pertanyaan pengguna HANYA berdasarkan artikel di bawah. Jika jawabannya tidak ada di artikel, katakan jujur bahwa artikel tidak menyebutkannya. Gunakan Bahasa Indonesia yang ringkas. Akhiri dengan baris "Sumber: <judul artikel>".';
+const sys='Kamu asisten baca yang cerdas. Jawab pertanyaan pengguna dalam Bahasa Indonesia yang ringkas dan jelas. Utamakan isi artikel di bawah sebagai sumber utama, tapi kamu juga boleh menambah wawasan dari pengetahuan umum atau konteks lain yang relevan agar jawaban lebih kaya. Tandai bagian tambahan dengan awalan "Tambahan wawasan:". Di akhir selalu tulis baris "Sumber:" lalu daftar sumber sebagai poin diawali "- ": sertakan judul artikel ini, dan jika memakai pengetahuan tambahan sebutkan referensi umum yang menjadi dasarnya (misalnya nama tokoh, buku, lembaga, atau bidang ilmu). Jangan mengarang sumber atau tautan palsu; jujur bila sesuatu tidak disebutkan di artikel.';
 const usr='Artikel berjudul "'+a.title+'":\n'+articleText(a)+'\n\nPertanyaan: '+q;
 try{await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:650},function(full){if(bot)bot.innerHTML=aiFmt(full);});}
 catch(e){if(bot)bot.innerHTML='<span class="ai-err">Gagal memuat AI. Pastikan aplikasi dijalankan di Vercel dan GROQ_API_KEY sudah diset.</span>';}
@@ -1014,7 +1014,7 @@ function skeleton(){return Array(3).fill('<div class="card-full" style="pointer-
 function emptyMsg(m){return `<div class="empty">${svg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>')}<p>${m}</p></div>`;}
 function markSaved(){document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});}
 let ovMode='article',ovTimer=null,ovImgItems=[];
-function openSearch(){const ov=$('#searchOverlay');if(!ov)return;ovMode=(lastView==='gallery')?'gallery':'article';const inp=$('#ovSearchInput');if(inp)inp.placeholder=ovMode==='gallery'?'Cari gambar di Kanvas...':'Cari insight, topik, tokoh...';ov.classList.add('open');const res=$('#ovResults');if(res)res.innerHTML='<div class="ov-hint">Ketik kata kunci untuk mencari secara live...</div>';setTimeout(()=>{if(inp){inp.focus();if(inp.value.trim())onOvSearch(inp.value);}},60);}
+function openSearch(){const ov=$('#searchOverlay');if(!ov)return;ovMode=(lastView==='gallery')?'gallery':'article';const inp=$('#ovSearchInput');if(inp)inp.placeholder=ovMode==='gallery'?'Cari di Discover...':'Cari insight, topik, tokoh...';ov.classList.add('open');const res=$('#ovResults');if(res)res.innerHTML='<div class="ov-hint">Ketik kata kunci untuk mencari secara live...</div>';setTimeout(()=>{if(inp){inp.focus();if(inp.value.trim())onOvSearch(inp.value);}},60);}
 function closeSearch(){const ov=$('#searchOverlay');if(ov)ov.classList.remove('open');}
 async function liveImageSearch(q){const results=await Promise.all(GALLERY_SOURCES.map(s=>{try{return Promise.resolve(s.fetch(q,q,0)).catch(()=>[]);}catch(e){return Promise.resolve([]);}}));let items=[];results.forEach(r=>{if(Array.isArray(r))items=items.concat(r);});const seen={},out=[];items.filter(a=>a&&a.image).forEach(a=>{const k=(a.title||'').toLowerCase();if(!seen[a.id]&&!seen[k]){seen[a.id]=1;seen[k]=1;out.push(a);}});return out;}
 async function liveArticleSearch(q){let items=[];try{items=await searchArticles(q,'var(--sage)',q,0,24);}catch(e){items=[];}if(items.length<8){try{const alt=await searchWiki(q,25);const seenw={};items.forEach(function(a){seenw[(a.title||'').toLowerCase()]=1;});alt.forEach(function(a){const k=(a.title||'').toLowerCase();if(k&&!seenw[k]){seenw[k]=1;items.push(a);}});}catch(e){}}const t=q.toLowerCase();const seen={};items.forEach(a=>{seen[a.id]=1;seen[(a.title||'').toLowerCase()]=1;});const local=ARTICLES.filter(a=>{const k=(a.title||'').toLowerCase();if(seen[a.id]||seen[k])return false;return a.title.toLowerCase().includes(t)||(a.excerpt||'').toLowerCase().includes(t)||(a.catName||'').toLowerCase().includes(t)||(a.author||'').toLowerCase().includes(t);});return items.concat(local);}
@@ -1593,7 +1593,7 @@ st.loading=false;renderGallery();
 }
 
 /* ============ NAV / VIEWS ============ */
-const VIEW_TITLES={gallery:'Kanvas',library:'Growth Library',profile:'Profil'};
+const VIEW_TITLES={gallery:'Discover',library:'Growth Library',profile:'Profil'};
 function setTopbar(name){const g=$('#greet'),nm=$('#brandName'),tl=$('#brandTitle');if(g)g.style.display='none';if(name&&VIEW_TITLES[name]){if(nm)nm.style.display='none';if(tl){tl.textContent=VIEW_TITLES[name];tl.style.display='';}}else{if(nm)nm.style.display='';if(tl)tl.style.display='none';}}
 function showView(name,fromReader,updateNav=true){
 document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
