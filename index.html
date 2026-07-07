@@ -286,6 +286,11 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .reflect-refresh:active{transform:rotate(-40deg)}
 .reflect-q{font-family:var(--serif);font-size:17px;line-height:1.4;color:var(--ink);font-style:italic}
 .reflect-q.loading{color:var(--muted)}
+.takeaways h4{flex-wrap:wrap}
+.ta-ai-btn{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.02em;text-transform:none;color:var(--sage);background:var(--sage-tint);border:1px solid var(--sage-tint-2);border-radius:8px;padding:5px 9px;cursor:pointer;transition:.15s}
+.ta-ai-btn:active{transform:scale(.95)}
+.ta-ai-btn:disabled{opacity:.6;cursor:default}
+.ta-ai-btn svg{width:13px;height:13px}
 .article p{margin-bottom:18px}
 .article h3{font-family:var(--serif);font-size:20px;font-weight:700;color:var(--ink);margin:26px 0 12px}
 .article blockquote{font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.5;color:var(--sage);border-left:3px solid var(--sage-300);padding:4px 0 4px 18px;margin:24px 0}
@@ -877,7 +882,23 @@ try{await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{te
 catch(e){if(bot)bot.innerHTML='<span class="ai-err">Gagal memuat AI. Pastikan aplikasi dijalankan di Vercel dan GROQ_API_KEY sudah diset.</span>';}
 _aiBusy=false;
 }
-function wireReaderAI(a){const s=$('#aiSummarize');if(s)s.onclick=runReaderSummary;const b=$('#aiAskBtn');if(b)b.onclick=runReaderAsk;const i=$('#aiAsk');if(i)i.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();runReaderAsk();}};}
+function wireReaderAI(a){const s=$('#aiSummarize');if(s)s.onclick=runReaderSummary;const b=$('#aiAskBtn');if(b)b.onclick=runReaderAsk;const g=$('#aiGenTakeaways');if(g)g.onclick=runTakeawaysAI;const i=$('#aiAsk');if(i)i.onkeydown=function(e){if(e.key==='Enter'){e.preventDefault();runReaderAsk();}};}
+async function runTakeawaysAI(){
+if(_aiBusy)return;const a=currentArticle;if(!a)return;_aiBusy=true;
+const btn=$('#aiGenTakeaways');if(btn)btn.disabled=true;
+const ul=$('#view-read .takeaways ul');const old=ul?ul.innerHTML:'';
+if(ul)ul.innerHTML='<li><span class="ai-typing">Menghasilkan takeaways dengan AI\u2026</span></li>';
+await ensureFull(a);
+const sys='Buat 4-5 key takeaways paling penting dari artikel dalam Bahasa Indonesia. Balas HANYA daftar poin, satu baris per poin, tiap baris diawali "- ". Tanpa judul atau pengantar. Tiap poin ringkas (maksimal 20 kata) dan hanya berdasarkan isi artikel.';
+const usr='Judul: '+a.title+'\n\nArtikel:\n'+articleText(a);
+try{
+const out=await groqStream([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.3,max_tokens:500},null);
+const items=(out||'').split('\n').map(function(l){return l.replace(/^\s*[-\u2022*\d.)]+\s*/,'').trim();}).filter(function(l){return l.length>2;}).slice(0,6);
+if(items.length&&ul){ul.innerHTML=items.map(function(t){return '<li>'+svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')+'<span>'+esc(t)+'</span></li>';}).join('');a.takeaways=items;}
+else if(ul)ul.innerHTML=old;
+}catch(e){if(ul)ul.innerHTML=old;toast('Gagal memuat AI. Pastikan sudah deploy di Vercel + GROQ_API_KEY.');}
+if(btn)btn.disabled=false;_aiBusy=false;
+}
 const REFLECT_KEY='insight_reflect_v1';
 const REFLECT_FALLBACK=['Apa satu hal kecil yang membuatmu penasaran hari ini, dan mengapa?','Pengetahuan apa yang ingin kamu pahami lebih dalam minggu ini?','Jika kamu punya 10 menit tenang, topik apa yang ingin kamu renungkan?','Apa yang kamu syukuri dari sesuatu yang kamu pelajari baru-baru ini?'];
 function renderReflect(text,loading){const slot=$('#reflectSlot');if(!slot)return;slot.innerHTML=`<div class="reflect-card"><div class="reflect-head">${svg('<path d="M12 3a6 6 0 0 0-6 6c0 2 1 3 2 4 .7.7 1 1.3 1 2h6c0-.7.3-1.3 1-2 1-1 2-2 2-4a6 6 0 0 0-6-6Z"/><path d="M9 21h6"/>')} Refleksi Hari Ini<button class="reflect-refresh" id="reflectRefresh" aria-label="Perbarui">${svg('<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>')}</button></div><p class="reflect-q${loading?' loading':''}">${loading?'Menyusun pertanyaan reflektif\u2026':esc(text||'')}</p></div>`;const rr=$('#reflectRefresh');if(rr)rr.onclick=function(){loadReflection(true);};}
@@ -1232,7 +1253,7 @@ function readerBodyHTML(a){return `<span class="reader-cat">${a.catName}</span>
 <div class="rt">${a.rt} min read</div>
 </div>
 <div class="takeaways">
-<h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h4>
+<h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways<button class="ta-ai-btn" id="aiGenTakeaways">${svg('<path d="m12 3 1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4Z"/>')} AI</button></h4>
 <ul>${a.takeaways.map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
 </div>
 ${aiPanelHTML()}
@@ -1291,7 +1312,7 @@ ${heroHtml}
 <div class="rt">${a.rt} min read</div>
 </div>
 <div class="takeaways">
-<h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways</h4>
+<h4>${svg('<path d="m9 11 3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/>')} Key Takeaways<button class="ta-ai-btn" id="aiGenTakeaways">${svg('<path d="m12 3 1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4Z"/>')} AI</button></h4>
 <ul>${a.takeaways.map(t=>`<li>${svg('<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>')}<span>${t}</span></li>`).join('')}</ul>
 </div>
 ${aiPanelHTML()}
@@ -1566,8 +1587,9 @@ creativity:['kreativitas','inovasi','imajinasi','seni','desain','pemecahan masal
 const CONTENT_KEY='insight_content_v6';
 const WIKI='https://id.wikipedia.org/w/api.php';
 let DAILY_QUOTE=null;
-function todayStr(){return new Date().toISOString().slice(0,10);}
-function dayOffset(){const d=new Date();return d.getFullYear()*372+d.getMonth()*31+d.getDate();}
+function wibNow(){return new Date(Date.now()+7*3600000);}
+function todayStr(){const d=wibNow();return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
+function dayOffset(){const d=wibNow();return d.getUTCFullYear()*372+d.getUTCMonth()*31+d.getUTCDate();}
 function estRead(t){const w=(t||'').trim().split(/\s+/).length;return Math.max(2,Math.round(w/180));}
 function clean(t){return (t||'').replace(/\s+/g,' ').trim();}
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -1607,7 +1629,10 @@ async function loadContent(force){
 try{
 const cached=JSON.parse(localStorage.getItem(CONTENT_KEY)||'null');
 if(!force&&cached&&cached.date===todayStr()&&cached.articles&&cached.articles.length>=8){ARTICLES=cached.articles;DAILY_QUOTE=cached.quote||null;onContentReady();return;}
-const picks=(TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({q:n,name:n,label:n,bg:colorFor(i)}))).slice(0,8);
+const _pool=(TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({q:n,name:n,label:n,bg:colorFor(i)})));
+const _seed=force?Math.floor(Math.random()*100000):dayOffset();
+const _rot=_pool.slice();const _n=Math.max(1,_rot.length);for(let _i=0;_i<(_seed%_n);_i++){_rot.push(_rot.shift());}
+const picks=_rot.slice(0,8);
 const results=await Promise.allSettled(picks.map(t=>fetchTopicSample(t,8)));
 let live=[];results.forEach(r=>{if(r.status==='fulfilled')live=live.concat(r.value);});
 const quote=await fetchQuote();
@@ -1665,7 +1690,7 @@ const NEWS_KEY='insight_news_v2';
 const HISTORY_KEY='insight_history_v2';
 function pgInfo(pg){pg=pg||{};return {url:(pg.content_urls&&pg.content_urls.desktop&&pg.content_urls.desktop.page)||'',thumb:(pg.thumbnail&&pg.thumbnail.source)||'',title:(pg.titles&&pg.titles.normalized)||pg.normalizedtitle||pg.title||''};}
 async function fetchOnThisDay(type,label){
-const d=new Date();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
+const d=wibNow();const mm=String(d.getUTCMonth()+1).padStart(2,'0');const dd=String(d.getUTCDate()).padStart(2,'0');
 const hosts=['id.wikipedia.org','en.wikipedia.org'];
 for(let hi=0;hi<hosts.length;hi++){
 try{
@@ -1689,7 +1714,7 @@ const seen=new Set();all=all.filter(f=>{const k=(f.title||f.text).toLowerCase();
 return all.slice(0,48);
 }
 async function fetchNewsForOffset(off){
-const d=new Date();d.setDate(d.getDate()-off);const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');const dl=dd+'/'+mm+'/'+yy;
+const d=wibNow();d.setUTCDate(d.getUTCDate()-off);const yy=d.getUTCFullYear();const mm=String(d.getUTCMonth()+1).padStart(2,'0');const dd=String(d.getUTCDate()).padStart(2,'0');const dl=dd+'/'+mm+'/'+yy;
 async function grab(host){const url='https://'+host+'/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd;const r=await fetch(url);if(!r.ok)throw new Error('news '+r.status);const j=await r.json();let out=[];
 (j.news||[]).forEach(n=>{const links=n.links||[];const pg=links.find(l=>l&&l.thumbnail)||links[0]||{};const info=pgInfo(pg);const txt=clean((n.story||'').replace(/<[^>]+>/g,' '));if(txt&&txt.length>10)out.push({year:'',text:txt,url:info.url,thumb:info.thumb,title:info.title,dateLabel:dl,kind:'Berita'});});
 ((j.mostread&&j.mostread.articles)||[]).forEach(a=>{const f=sumToFact(a);if(f.text&&f.text.length>=12){f.dateLabel=dl;f.kind='Populer';out.push(f);}});
@@ -1712,7 +1737,7 @@ if(newsDay>45||added===0)newsDone=true;
 newsInit=true;newsLoading=false;renderNews();
 }
 async function fetchFacts(){
-const d=new Date();const yy=d.getFullYear();const mm=String(d.getMonth()+1).padStart(2,'0');const dd=String(d.getDate()).padStart(2,'0');
+const d=wibNow();const yy=d.getUTCFullYear();const mm=String(d.getUTCMonth()+1).padStart(2,'0');const dd=String(d.getUTCDate()).padStart(2,'0');
 let all=[];
 try{const r=await fetch('https://id.wikipedia.org/api/rest_v1/feed/featured/'+yy+'/'+mm+'/'+dd);if(r.ok){const j=await r.json();if(j.tfa)all.push(sumToFact(j.tfa));((j.mostread&&j.mostread.articles)||[]).forEach(a=>all.push(sumToFact(a)));}}catch(e){}
 try{const sel=await fetchOnThisDay('selected','');all=all.concat(sel||[]);}catch(e){}
@@ -1736,7 +1761,7 @@ function railSkeleton(){return Array(3).fill('<div class="fact-card" style="poin
 function hubHint(icon,msg){return '<div class="fact-card" style="pointer-events:none"><div class="fact-body"><span class="fact-kicker">'+svg(icon)+' Info</span><p style="color:var(--muted)">'+esc(msg)+'</p></div></div>';}
 function hubMeta(tab){
 if(tab==='news')return {title:'Peristiwa Terkini',sub:'Diperbarui hari ini \u00b7 kabar dunia',icon:'<path d="M4 22h16a2 2 0 0 0 2-2V4H8v16a2 2 0 0 1-2 2Z"/><path d="M18 2H4a2 2 0 0 0-2 2v16"/><path d="M8 8h6M8 12h6M8 16h4"/>'};
-if(tab==='history'){const _d=new Date();const _nm=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][_d.getMonth()];return {title:'Hari Ini dalam Sejarah',sub:_d.getDate()+' '+_nm+' \u00b7 peristiwa lintas tahun',icon:'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>'};}
+if(tab==='history'){const _d=wibNow();const _nm=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][_d.getUTCMonth()];return {title:'Hari Ini dalam Sejarah',sub:_d.getUTCDate()+' '+_nm+' \u00b7 peristiwa lintas tahun',icon:'<path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/>'};}
 return {title:'Tahukah Kamu?',sub:'Diperbarui hari ini \u00b7 fakta & sorotan',icon:'<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-4 12.6c.6.5 1 1.2 1 2V17h6v-.4c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>'};
 }
 function renderHub(){
