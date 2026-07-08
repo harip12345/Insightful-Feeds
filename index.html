@@ -213,6 +213,8 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .jrn-clear{border:none;background:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px;line-height:1}
 .loadmore-btn{display:block;margin:6px auto 0;padding:11px 22px;background:var(--sage);color:#fff;border:none;border-radius:12px;font-weight:600;font-size:13px;font-family:var(--sans);cursor:pointer}
 .loadmore-btn:active{transform:scale(.97)}
+.pdf-embed{margin:12px 0 4px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#f2efe9}
+.pdf-embed iframe{width:100%;height:560px;border:none;display:block}
 
 /* ---------- Read-in-place full card ---------- */
 .card-full{background:var(--paper);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:.2s}
@@ -1055,12 +1057,48 @@ function paperCite(authors,year,title,venue,doi,url){
 var a=(authors&&authors.length)?(authors.slice(0,3).join(', ')+(authors.length>3?', dkk.':'')):'Anonim';
 return a+(year?(' ('+year+').'):'')+' '+(title||'')+'. '+(venue||'')+'. '+(doi||url||'');
 }
+function journalBody(a){
+var h='<h3>Abstrak</h3>'+buildBody(a.absRaw||'');
+if(a._fullHtml){h+='<h3>Isi Lengkap</h3>'+a._fullHtml;}
+if(a.pdfUrl){h+='<h3>Dokumen Lengkap (PDF)</h3><div class="pdf-embed"><iframe src="'+esc(a.pdfUrl)+'" title="PDF makalah" loading="lazy"></iframe></div>';}
+h+='<h3>Detail Publikasi</h3>';
+h+='<p><strong>Penulis:</strong> '+esc((a.authorsArr&&a.authorsArr.join(', '))||'-')+'</p>';
+h+='<p><strong>Publikasi:</strong> '+esc(a.venue||'-')+(a.year?(' ('+a.year+')'):'')+'</p>';
+if(a.doi)h+='<p><strong>DOI:</strong> <a href="'+esc(a.doi)+'" target="_blank" rel="noopener">'+esc(a.doi)+'</a></p>';
+if(a.srcUrl)h+='<p><a class="paper-link" href="'+esc(a.srcUrl)+'" target="_blank" rel="noopener">Baca makalah lengkap di sumber</a></p>';
+return h;
+}
 function paperArticle(o){
 var ab=clean(o.abstract||'');
 if(ab.length<60)return null;
 var sents=sentences(ab);
 var take=sents.slice(0,3);if(!take.length)take=[ab.slice(0,140)];
-return {id:o.idpfx+'_'+o.rawid,cat:'jurnal',catName:o.tag||'Jurnal',title:o.title||'Tanpa judul',kind:'jurnal',full:true,author:authorLine(o.authors),role:(o.venue||'Jurnal')+(o.year?(' \u00b7 '+o.year):''),rt:estRead(ab),bg:o.bg||JBG,image:'',iw:0,ih:0,excerpt:clean(sents[0]||ab).slice(0,180),takeaways:take.map(clean),body:paperBody(ab,o.authors,o.venue,o.year,o.doi,o.url),cites:[paperCite(o.authors,o.year,o.title,o.venue,o.doi,o.url)]};
+var u=o.url||'';var pdf=/\.pdf($|\?)/i.test(u)?u:'';
+var a={id:o.idpfx+'_'+o.rawid,cat:'jurnal',catName:o.tag||'Jurnal',title:o.title||'Tanpa judul',kind:'jurnal',full:true,author:authorLine(o.authors),role:(o.venue||'Jurnal')+(o.year?(' \u00b7 '+o.year):''),rt:estRead(ab),bg:o.bg||JBG,image:'',iw:0,ih:0,excerpt:clean(sents[0]||ab).slice(0,180),takeaways:take.map(clean),cites:[paperCite(o.authors,o.year,o.title,o.venue,o.doi,o.url)]};
+a.absRaw=ab;a.authorsArr=o.authors||[];a.venue=o.venue||'';a.year=o.year||'';a.doi=o.doi||'';a.srcUrl=u;a.pdfUrl=pdf;
+if(o.ftSource&&o.ftId){a.ftSource=o.ftSource;a.ftId=o.ftId;}
+a.body=journalBody(a);
+return a;
+}
+function epmcXmlToHtml(xml){
+try{
+var doc=new DOMParser().parseFromString(xml,'application/xml');
+var body=doc.getElementsByTagName('body')[0];
+if(!body)return '';
+var nodes=body.querySelectorAll('title,p');var out='';
+for(var i=0;i<nodes.length;i++){var el=nodes[i];var tag=el.tagName.toLowerCase();var txt=clean(el.textContent||'');if(!txt||txt.length<2)continue;if(tag==='title'){if(txt.length<=90)out+='<h3>'+esc(txt)+'</h3>';}else{out+='<p>'+esc(txt)+'</p>';}}
+return out;
+}catch(e){return '';}
+}
+async function ensureJournalFull(a){
+if(!a||a._ftDone)return false;
+if(!a.ftSource||!a.ftId){a._ftDone=true;return false;}
+a._ftDone=true;
+try{
+var r=await fetch('https://www.ebi.ac.uk/europepmc/webservices/rest/'+a.ftSource+'/'+a.ftId+'/fullTextXML');
+if(r.ok){var xml=await r.text();var html=epmcXmlToHtml(xml);if(html&&html.length>400){a._fullHtml=html;a.body=journalBody(a);a.rt=estRead((a.absRaw||'')+' '+html.replace(/<[^>]+>/g,' '));return true;}}
+}catch(e){}
+return false;
 }
 async function fetchOpenAlex(page,q){
 let url='https://api.openalex.org/works?filter=has_abstract:true,is_oa:true&per_page=12&page='+(page||1);
@@ -1087,8 +1125,26 @@ const ids=b.identifier||[];var doi='';for(var k=0;k<ids.length;k++){if(ids[k]&&i
 return paperArticle({idpfx:'j_doaj',rawid:String(res.id||Math.random().toString(36).slice(2)),title:b.title,abstract:b.abstract||'',authors:authors,venue:(b.journal&&b.journal.title)||'',year:b.year||'',doi:doi,url:full||doi,tag:'Jurnal ID',bg:grad('#6b5b3b','#40361f')});
 }).filter(Boolean);
 }
+async function fetchEuropePMC(page,q){
+const base='(OPEN_ACCESS:Y AND HAS_ABSTRACT:Y AND IN_EPMC:Y)';
+const query=q?('('+q+') AND '+base):base;
+const url='https://www.ebi.ac.uk/europepmc/webservices/rest/search?query='+encodeURIComponent(query)+'&format=json&resultType=core&pageSize=10&sort=CITED%20desc&page='+(page||1);
+const r=await fetch(url);if(!r.ok)throw new Error('epmc '+r.status);
+const j=await r.json();
+const list=(j.resultList&&j.resultList.result)||[];
+return list.map(function(res){
+const authors=[];
+if(res.authorList&&res.authorList.author){res.authorList.author.forEach(function(x){if(x.fullName)authors.push(x.fullName);});}
+else if(res.authorString){res.authorString.split(',').forEach(function(s){s=clean(s);if(s)authors.push(s);});}
+const venue=(res.journalInfo&&res.journalInfo.journal&&res.journalInfo.journal.title)||'';
+const pmcid=res.pmcid||'';
+const doi=res.doi?('https://doi.org/'+res.doi):'';
+const link=pmcid?('https://europepmc.org/article/PMC/'+pmcid):(doi||'');
+return paperArticle({idpfx:'j_epmc',rawid:String(res.id||pmcid||Math.random().toString(36).slice(2)),title:res.title,abstract:res.abstractText||'',authors:authors,venue:venue,year:res.pubYear||'',doi:doi,url:link,tag:'Jurnal',bg:grad('#3b5b6b','#20353f'),ftSource:pmcid?'PMC':'',ftId:pmcid||''});
+}).filter(Boolean);
+}
 async function fetchJournals(page,q){
-const results=await Promise.allSettled([fetchOpenAlex((page||0)+1,q),fetchDoaj((page||0)+1,q)]);
+const results=await Promise.allSettled([fetchOpenAlex((page||0)+1,q),fetchEuropePMC((page||0)+1,q),fetchDoaj((page||0)+1,q)]);
 let items=[];results.forEach(function(r){if(r.status==='fulfilled'&&Array.isArray(r.value))items=items.concat(r.value);});
 const seen={};const out=[];items.forEach(function(a){if(!a)return;const key=(a.title||'').toLowerCase();if(key&&!seen[key]){seen[key]=1;out.push(a);}});
 return shuffle(out);
@@ -1394,6 +1450,16 @@ ${a.cites.map((c,i)=>`<div class="cite"><span class="num">[${i+1}]</span><span>$
 </div>`;}
 function heroSlideHTML(x){if(x&&x.image){const u=String(x.image).replace(/'/g,'%27').replace(/"/g,'%22');return `<div class="hero-slide"><div class="ph img" data-bg="${u}"></div></div>`;}return `<div class="hero-slide"><div class="ph" style="background:${(x&&x.bg)||'var(--sage)'}"></div></div>`;}
 function loadHeroBg(ph){if(!ph)return;const u=ph.getAttribute('data-bg');if(u){ph.style.backgroundImage="url('"+u+"')";ph.removeAttribute('data-bg');}}
+function maybeLoadJournalFull(a){
+if(!a||a._ftDone||!a.ftSource||!a.ftId)return;
+const art=$('#view-read .article');
+if(art)art.insertAdjacentHTML('beforeend','<p class="more-end" id="jrnFullLoad"><span class="spin"></span> Memuat teks lengkap jurnal\u2026</p>');
+ensureJournalFull(a).then(function(ok){
+if(currentArticle!==a)return;
+if(ok){const a2=$('#view-read .article');if(a2)a2.innerHTML=a.body;const rt=$('#view-read .rt');if(rt)rt.textContent=a.rt+' min read';}
+else{const ld=$('#jrnFullLoad');if(ld)ld.outerHTML='<p class="more-end">Teks lengkap tidak tersedia di sini \u2014 buka sumber untuk versi penuh.</p>';}
+});
+}
 function maybeLoadFull(a){
 if(a&&!a.full&&/^w_/.test(a.id||'')){
 const art=$('#view-read .article');
@@ -1465,6 +1531,7 @@ showView('read',true,false);
 $('#scroll').scrollTo({top:0});
 if(photo){const g=$('#readerGrad');if(g)g.style.opacity='0';const track=$('#heroTrack');if(track){track.scrollLeft=track.clientWidth*idx;const slides=track.querySelectorAll('.hero-slide');const cur=slides[idx];if(cur)cur.querySelectorAll('[data-bg]').forEach(loadHeroBg);bindHeroCarousel();}}
 maybeLoadFull(a);
+maybeLoadJournalFull(a);
 }
 function toggleRead(id){
 if(!S.read.includes(id)){
