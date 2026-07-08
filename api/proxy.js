@@ -13,6 +13,8 @@ const ALLOW = [
   'inaturalist.org',
   'openalex.org',
   'doaj.org',
+  'ebi.ac.uk',
+  'europepmc.org',
 ]
 
 function allowed(hostname) {
