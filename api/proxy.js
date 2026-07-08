@@ -11,6 +11,8 @@ const ALLOW = [
   'artic.edu',
   'metmuseum.org',
   'inaturalist.org',
+  'openalex.org',
+  'doaj.org',
 ]
 
 function allowed(hostname) {
@@ -32,7 +34,6 @@ export default async function handler(req) {
     return new Response('forbidden host', { status: 403 })
   }
 
-  // Random endpoints must never be cached (they power the "unlimited" feeds).
   const isRandom = /\/page\/random\//.test(t.pathname)
 
   let upstream
@@ -56,7 +57,6 @@ export default async function handler(req) {
   if (isRandom) {
     headers.set('Cache-Control', 'no-store')
   } else {
-    // Fresh for 1h at the edge, serve stale up to 1 day while revalidating.
     headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
   }
   return new Response(body, { status: upstream.status, headers })
