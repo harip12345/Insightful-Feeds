@@ -51,8 +51,8 @@ overflow:hidden;
 box-shadow:0 0 60px rgba(0,0,0,.12);
 }
 @media(min-width:520px){
-body{padding:24px 0;background:#ddd9d3}
-.app{min-height:calc(100vh - 48px);border-radius:28px}
+body{padding:0;background:#ddd9d3}
+.app{height:100vh;min-height:100vh;border-radius:0;box-shadow:0 0 60px rgba(0,0,0,.14)}
 }
 
 /* ---------- Top Bar ---------- */
@@ -796,7 +796,7 @@ const extra=[];
 const base=cur.concat(extra.slice(0,12));
 TOPICS=base.map((t,i)=>({id:slug(t.q),name:t.q,q:t.q,label:t.label||t.q,bg:colorFor(i)}));
 }
-function resolveCat(id){const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
+function resolveCat(id){if(id==='jurnal')return {id:'jurnal',name:'Jurnal',label:'\ud83d\udcc4 Jurnal',q:'jurnal',bg:grad('#3b5b6b','#20353f')};const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
 
 /* ============ RENDER: CHIPS ============ */
 let activeSub='all';
@@ -812,7 +812,7 @@ b.innerHTML=svg('<path d="m15 18-6-6 6-6"/>','chip-back')+'<span>'+esc(cat.label
 b.onclick=()=>{clearHomeSearch();activeCat='all';activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 wrap.appendChild(b);
 }else{
-const all=[{id:'all',name:'Untukmu'}].concat(TOPICS);
+const all=[{id:'all',name:'Untukmu'},{id:'jurnal',name:'Jurnal',label:'\ud83d\udcc4 Jurnal'}].concat(TOPICS);
 const cs=el('div','chips-scroll');
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
@@ -833,6 +833,7 @@ const legacy=$('#subChips');if(legacy){legacy.style.display='none';legacy.innerH
 const wrap=$('#feedChips');if(!wrap)return;
 wrap.querySelectorAll('.chip-gap,.subchips-scroll').forEach(n=>n.remove());
 if(!isTopicCat(activeCat))return;
+if(activeCat==='jurnal')return;
 const counts=subCounts();
 const gap=el('div','chip-gap');wrap.appendChild(gap);
 const sc=el('div','subchips-scroll');
@@ -1004,6 +1005,61 @@ const r=await fetch(url);if(!r.ok)throw new Error('wiki '+r.status);
 const j=await r.json();const pages=Object.values((j.query&&j.query.pages)||{});
 pages.sort((a,b)=>(a.index||0)-(b.index||0));
 return pages.filter(p=>p.extract&&clean(p.extract).length>140&&!/(dapat mengacu pada|dapat merujuk|disambigu)/i.test(p.extract)).map(p=>toArticle(p,slug(name||query),name||query,bg));
+}
+
+/* ============ JOURNALS / PAPERS (OpenAlex + DOAJ) ============ */
+const JBG=grad('#3b5b6b','#20353f');
+function deInvert(inv){if(!inv)return '';const words=[];Object.keys(inv).forEach(function(w){(inv[w]||[]).forEach(function(pos){words[pos]=w;});});return clean(words.join(' '));}
+function authorLine(list){if(!list||!list.length)return 'Anonim';return list.length>1?(list[0]+' et al.'):list[0];}
+function paperBody(ab,authors,venue,year,doi,url){
+var h='<h3>Abstrak</h3>'+buildBody(ab);
+h+='<h3>Detail Publikasi</h3>';
+h+='<p><strong>Penulis:</strong> '+esc((authors&&authors.join(', '))||'-')+'</p>';
+h+='<p><strong>Publikasi:</strong> '+esc(venue||'-')+(year?(' ('+year+')'):'')+'</p>';
+if(doi)h+='<p><strong>DOI:</strong> <a href="'+esc(doi)+'" target="_blank" rel="noopener">'+esc(doi)+'</a></p>';
+if(url)h+='<p><a class="paper-link" href="'+esc(url)+'" target="_blank" rel="noopener">Baca makalah lengkap</a></p>';
+return h;
+}
+function paperCite(authors,year,title,venue,doi,url){
+var a=(authors&&authors.length)?(authors.slice(0,3).join(', ')+(authors.length>3?', dkk.':'')):'Anonim';
+return a+(year?(' ('+year+').'):'')+' '+(title||'')+'. '+(venue||'')+'. '+(doi||url||'');
+}
+function paperArticle(o){
+var ab=clean(o.abstract||'');
+if(ab.length<60)return null;
+var sents=sentences(ab);
+var take=sents.slice(0,3);if(!take.length)take=[ab.slice(0,140)];
+return {id:o.idpfx+'_'+o.rawid,cat:'jurnal',catName:o.tag||'Jurnal',title:o.title||'Tanpa judul',kind:'jurnal',full:true,author:authorLine(o.authors),role:(o.venue||'Jurnal')+(o.year?(' \u00b7 '+o.year):''),rt:estRead(ab),bg:o.bg||JBG,image:'',iw:0,ih:0,excerpt:clean(sents[0]||ab).slice(0,180),takeaways:take.map(clean),body:paperBody(ab,o.authors,o.venue,o.year,o.doi,o.url),cites:[paperCite(o.authors,o.year,o.title,o.venue,o.doi,o.url)]};
+}
+async function fetchOpenAlex(page){
+const url='https://api.openalex.org/works?filter=has_abstract:true,is_oa:true&sort=cited_by_count:desc&per_page=12&page='+(page||1);
+const r=await fetch(url);if(!r.ok)throw new Error('openalex '+r.status);
+const j=await r.json();
+return (j.results||[]).map(function(w){
+const authors=(w.authorships||[]).map(function(x){return x.author&&x.author.display_name;}).filter(Boolean);
+const venue=(w.primary_location&&w.primary_location.source&&w.primary_location.source.display_name)||'';
+const oa=(w.open_access&&w.open_access.oa_url)||'';
+return paperArticle({idpfx:'j_oa',rawid:String(w.id||'').split('/').pop()||Math.random().toString(36).slice(2),title:w.display_name||w.title,abstract:deInvert(w.abstract_inverted_index),authors:authors,venue:venue,year:w.publication_year||'',doi:w.doi||'',url:oa||w.doi||w.id||'',tag:'Jurnal',bg:JBG});
+}).filter(Boolean);
+}
+async function fetchDoaj(page){
+const q=encodeURIComponent('bibjson.journal.country:ID');
+const url='https://doaj.org/api/search/articles/'+q+'?pageSize=10&page='+(page||1);
+const r=await fetch(url);if(!r.ok)throw new Error('doaj '+r.status);
+const j=await r.json();
+return (j.results||[]).map(function(res){
+const b=res.bibjson||{};
+const authors=(b.author||[]).map(function(x){return x.name;}).filter(Boolean);
+const links=b.link||[];var full='';for(var i=0;i<links.length;i++){if(links[i]&&links[i].url){full=links[i].url;if(links[i].type==='fulltext')break;}}
+const ids=b.identifier||[];var doi='';for(var k=0;k<ids.length;k++){if(ids[k]&&ids[k].type==='doi'){doi='https://doi.org/'+ids[k].id;break;}}
+return paperArticle({idpfx:'j_doaj',rawid:String(res.id||Math.random().toString(36).slice(2)),title:b.title,abstract:b.abstract||'',authors:authors,venue:(b.journal&&b.journal.title)||'',year:b.year||'',doi:doi,url:full||doi,tag:'Jurnal ID',bg:grad('#6b5b3b','#40361f')});
+}).filter(Boolean);
+}
+async function fetchJournals(page){
+const results=await Promise.allSettled([fetchOpenAlex((page||0)+1),fetchDoaj((page||0)+1)]);
+let items=[];results.forEach(function(r){if(r.status==='fulfilled'&&Array.isArray(r.value))items=items.concat(r.value);});
+const seen={};const out=[];items.forEach(function(a){if(!a)return;const key=(a.title||'').toLowerCase();if(key&&!seen[key]){seen[key]=1;out.push(a);}});
+return shuffle(out);
 }
 
 /* ============ FEED (with pagination) ============ */
@@ -1178,6 +1234,9 @@ if(cat==='all'){
 const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,label:n,bg:colorFor(i)}));
 const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
 batch=await fetchTopicSample(t,12);
+}else if(cat==='jurnal'){
+try{batch=await fetchJournals(st.rot||0);}catch(e){}
+st.rot=(st.rot||0)+1;
 }else{
 const t=resolveCat(cat)||{q:cat,name:cat,label:cat,bg:'var(--sage)'};
 if(!st.catDone){try{const res=await loadTopicBatch(t,st,10);batch=res.items;if(res.done)st.catDone=true;}catch(e){st.catDone=true;}}
@@ -1187,6 +1246,7 @@ const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
 const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
 st.items=st.items.concat(fresh);
 if(cat==='all'){st.offset+=12;if(st.rot>=(TOPICS.length||8)*2)st.done=true;}
+else if(cat==='jurnal'){if(st.rot>=6||fresh.length===0)st.done=true;}
 else{if(st.catDone&&fresh.length===0)st.done=true;}
 }catch(e){
 if(!st.items.length&&cat==='all')st.items=ARTICLES.slice();
