@@ -202,6 +202,17 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .trend-card .kicker svg{width:12px;height:12px;color:#ffce87}
 .trend-card h4{position:relative;z-index:2;font-family:var(--serif);font-size:16px;line-height:1.2;font-weight:700;margin-bottom:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .trend-card .m{position:relative;z-index:2;font-size:11px;opacity:.9;font-weight:500}
+.trend-card.trend-more{background:linear-gradient(135deg,#3b5b6b,#20353f);align-items:center;justify-content:center;width:158px}
+.trend-more .more-in{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-weight:600;font-size:13px;padding:0 12px;line-height:1.35}
+.trend-more .more-in svg{width:20px;height:20px}
+.rail-hint{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:26px 6px}
+.jrn-intro{padding:14px 20px 6px;color:var(--muted);font-size:13px;line-height:1.5}
+.jrn-search{display:flex;align-items:center;gap:9px;margin:8px 20px 4px;padding:11px 14px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.jrn-search svg{width:18px;height:18px;color:var(--muted);flex-shrink:0}
+.jrn-search input{flex:1;border:none;outline:none;background:none;font-size:14px;font-family:var(--sans);color:var(--ink)}
+.jrn-clear{border:none;background:none;color:var(--muted);font-size:15px;cursor:pointer;padding:2px 4px;line-height:1}
+.loadmore-btn{display:block;margin:6px auto 0;padding:11px 22px;background:var(--sage);color:#fff;border:none;border-radius:12px;font-weight:600;font-size:13px;font-family:var(--sans);cursor:pointer}
+.loadmore-btn:active{transform:scale(.97)}
 
 /* ---------- Read-in-place full card ---------- */
 .card-full{background:var(--paper);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--shadow-sm);cursor:pointer;transition:.2s}
@@ -510,7 +521,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <div id="reflectSlot"></div>
 <div id="hubSlot"></div>
 
-<div class="sec-head"><div><h2>Trending Now</h2><div class="sub">Sorotan pilihan editor</div></div></div>
+<div class="sec-head"><div><h2>Jurnal Pilihan</h2><div class="sub">Paper &amp; riset terkurasi</div></div><a id="moreJournals" data-more="1">Lebih lengkap</a></div>
 <div class="trend-rail" id="trendRail"></div>
 
 <div class="sec-head" id="feedHead"><div><h2>Your Daily Feed</h2><div class="sub">Baca langsung, tanpa terburu-buru</div></div><a id="refreshFeed">Refresh</a></div>
@@ -577,6 +588,15 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <div class="sec-head"><div><h2>Achievements</h2></div></div>
 <div class="badges" id="badgeGrid"></div>
 <div style="height:20px"></div>
+</section>
+
+<!-- JOURNALS -->
+<section class="view" id="view-journals">
+<div class="jrn-intro">Jelajahi paper &amp; jurnal ilmiah dari OpenAlex &amp; DOAJ. Cari topik spesifik atau kata kunci yang kamu minati.</div>
+<div class="jrn-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="jrnInput" type="text" placeholder="Cari jurnal atau kata kunci..."><button id="jrnClear" class="jrn-clear" aria-label="Bersihkan" style="display:none">✕</button></div>
+<div class="chips" id="journalChips"></div>
+<div class="feed" id="journalList"></div>
+<div class="loadmore-wrap" id="journalMore"></div>
 </section>
 
 <!-- DEEP DIVE READER -->
@@ -796,7 +816,7 @@ const extra=[];
 const base=cur.concat(extra.slice(0,12));
 TOPICS=base.map((t,i)=>({id:slug(t.q),name:t.q,q:t.q,label:t.label||t.q,bg:colorFor(i)}));
 }
-function resolveCat(id){if(id==='jurnal')return {id:'jurnal',name:'Jurnal',label:'\ud83d\udcc4 Jurnal',q:'jurnal',bg:grad('#3b5b6b','#20353f')};const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
+function resolveCat(id){const t=TOPICS.find(x=>x.id===id);if(t)return t;const c=CATS.find(x=>x.id===id);if(c)return {id:c.id,name:c.name,q:CAT_Q[c.id]||c.name,bg:c.bg};return null;}
 
 /* ============ RENDER: CHIPS ============ */
 let activeSub='all';
@@ -812,7 +832,7 @@ b.innerHTML=svg('<path d="m15 18-6-6 6-6"/>','chip-back')+'<span>'+esc(cat.label
 b.onclick=()=>{clearHomeSearch();activeCat='all';activeSub='all';renderChips();renderFeed();$('#scroll').scrollTo({top:0,behavior:'smooth'});};
 wrap.appendChild(b);
 }else{
-const all=[{id:'all',name:'Untukmu'},{id:'jurnal',name:'Jurnal',label:'\ud83d\udcc4 Jurnal'}].concat(TOPICS);
+const all=[{id:'all',name:'Untukmu'}].concat(TOPICS);
 const cs=el('div','chips-scroll');
 all.forEach(c=>{
 const b=el('button','chip'+(activeCat===c.id?' active':''));
@@ -833,7 +853,6 @@ const legacy=$('#subChips');if(legacy){legacy.style.display='none';legacy.innerH
 const wrap=$('#feedChips');if(!wrap)return;
 wrap.querySelectorAll('.chip-gap,.subchips-scroll').forEach(n=>n.remove());
 if(!isTopicCat(activeCat))return;
-if(activeCat==='jurnal')return;
 const counts=subCounts();
 const gap=el('div','chip-gap');wrap.appendChild(gap);
 const sc=el('div','subchips-scroll');
@@ -939,13 +958,25 @@ return `<article class="card${read?' read':''}" data-id="${a.id}">
 </article>`;
 }
 function stripFirst(body){const m=(body||'').match(/<p>([\s\S]*?)<\/p>/);let t=m?m[1]:'';return t.replace(/<[^>]+>/g,'');}
-function renderTrending(items){
-const t=(items&&items.length?items:ARTICLES).slice(0,5);
+let homeJournals=null;let homeJournalsLoading=false;
+async function loadHomeJournals(){
+if(homeJournalsLoading)return;homeJournalsLoading=true;
+try{const items=await fetchJournals(0);homeJournals=items;regArticles(items);}catch(e){if(!homeJournals)homeJournals=[];}
+homeJournalsLoading=false;
+const vh=$('#view-home');if(vh&&vh.classList.contains('active'))renderTrending();
+}
+function renderTrending(){
+const rail=$('#trendRail');if(!rail)return;
+const arrow=svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>');
+if(homeJournals===null){rail.innerHTML='<div class="rail-hint"><span class="spin"></span> Memuat jurnal\u2026</div>';loadHomeJournals();return;}
+if(!homeJournals.length){rail.innerHTML='<div class="rail-hint">Jurnal tampil saat aplikasi online.</div><div class="trend-card trend-more" data-more="1"><div class="more-in"><span>Buka halaman jurnal</span>'+arrow+'</div></div>';return;}
+const t=homeJournals.slice(0,5);
+const kicker=svg('<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>');
 $('#trendRail').innerHTML=t.map(a=>`<div class="trend-card" data-id="${a.id}">
 ${coverPH(a)}<div class="grad"></div>
-<span class="kicker">${svg('<path d="M12 2s4 4 4 8a4 4 0 0 1-8 0c0-1 .3-1.8.7-2.5C8 8.5 8 7 7 6c0 0 5 1 5 5 0-2 0-5 0-9Z"/>')} Trending</span>
-<h4>${a.title}</h4><div class="m">${a.catName} \u00b7 ${a.rt} min</div>
-</div>`).join('');
+<span class="kicker">${kicker} ${esc(a.catName)}</span>
+<h4>${esc(a.title)}</h4><div class="m">${esc(a.author)} \u00b7 ${a.rt} min</div>
+</div>`).join('')+`<div class="trend-card trend-more" data-more="1"><div class="more-in"><span>Muat jurnal lebih lengkap</span>${arrow}</div></div>`;
 }
 function cardFullHTML(a){
 const saved=S.saved.includes(a.id);
@@ -1031,8 +1062,9 @@ var sents=sentences(ab);
 var take=sents.slice(0,3);if(!take.length)take=[ab.slice(0,140)];
 return {id:o.idpfx+'_'+o.rawid,cat:'jurnal',catName:o.tag||'Jurnal',title:o.title||'Tanpa judul',kind:'jurnal',full:true,author:authorLine(o.authors),role:(o.venue||'Jurnal')+(o.year?(' \u00b7 '+o.year):''),rt:estRead(ab),bg:o.bg||JBG,image:'',iw:0,ih:0,excerpt:clean(sents[0]||ab).slice(0,180),takeaways:take.map(clean),body:paperBody(ab,o.authors,o.venue,o.year,o.doi,o.url),cites:[paperCite(o.authors,o.year,o.title,o.venue,o.doi,o.url)]};
 }
-async function fetchOpenAlex(page){
-const url='https://api.openalex.org/works?filter=has_abstract:true,is_oa:true&sort=cited_by_count:desc&per_page=12&page='+(page||1);
+async function fetchOpenAlex(page,q){
+let url='https://api.openalex.org/works?filter=has_abstract:true,is_oa:true&per_page=12&page='+(page||1);
+if(q){url+='&search='+encodeURIComponent(q)+'&sort=relevance_score:desc';}else{url+='&sort=cited_by_count:desc';}
 const r=await fetch(url);if(!r.ok)throw new Error('openalex '+r.status);
 const j=await r.json();
 return (j.results||[]).map(function(w){
@@ -1042,9 +1074,9 @@ const oa=(w.open_access&&w.open_access.oa_url)||'';
 return paperArticle({idpfx:'j_oa',rawid:String(w.id||'').split('/').pop()||Math.random().toString(36).slice(2),title:w.display_name||w.title,abstract:deInvert(w.abstract_inverted_index),authors:authors,venue:venue,year:w.publication_year||'',doi:w.doi||'',url:oa||w.doi||w.id||'',tag:'Jurnal',bg:JBG});
 }).filter(Boolean);
 }
-async function fetchDoaj(page){
-const q=encodeURIComponent('bibjson.journal.country:ID');
-const url='https://doaj.org/api/search/articles/'+q+'?pageSize=10&page='+(page||1);
+async function fetchDoaj(page,q){
+const base=q?('bibjson.journal.country:ID AND ('+q+')'):'bibjson.journal.country:ID';
+const url='https://doaj.org/api/search/articles/'+encodeURIComponent(base)+'?pageSize=10&page='+(page||1);
 const r=await fetch(url);if(!r.ok)throw new Error('doaj '+r.status);
 const j=await r.json();
 return (j.results||[]).map(function(res){
@@ -1055,8 +1087,8 @@ const ids=b.identifier||[];var doi='';for(var k=0;k<ids.length;k++){if(ids[k]&&i
 return paperArticle({idpfx:'j_doaj',rawid:String(res.id||Math.random().toString(36).slice(2)),title:b.title,abstract:b.abstract||'',authors:authors,venue:(b.journal&&b.journal.title)||'',year:b.year||'',doi:doi,url:full||doi,tag:'Jurnal ID',bg:grad('#6b5b3b','#40361f')});
 }).filter(Boolean);
 }
-async function fetchJournals(page){
-const results=await Promise.allSettled([fetchOpenAlex((page||0)+1),fetchDoaj((page||0)+1)]);
+async function fetchJournals(page,q){
+const results=await Promise.allSettled([fetchOpenAlex((page||0)+1,q),fetchDoaj((page||0)+1,q)]);
 let items=[];results.forEach(function(r){if(r.status==='fulfilled'&&Array.isArray(r.value))items=items.concat(r.value);});
 const seen={};const out=[];items.forEach(function(a){if(!a)return;const key=(a.title||'').toLowerCase();if(key&&!seen[key]){seen[key]=1;out.push(a);}});
 return shuffle(out);
@@ -1234,9 +1266,6 @@ if(cat==='all'){
 const pool=TOPICS.length?TOPICS:FALLBACK_TOPICS.map((n,i)=>({id:slug(n),name:n,q:n,label:n,bg:colorFor(i)}));
 const t=pool[(st.rot||0)%pool.length];st.rot=(st.rot||0)+1;
 batch=await fetchTopicSample(t,12);
-}else if(cat==='jurnal'){
-try{batch=await fetchJournals(st.rot||0);}catch(e){}
-st.rot=(st.rot||0)+1;
 }else{
 const t=resolveCat(cat)||{q:cat,name:cat,label:cat,bg:'var(--sage)'};
 if(!st.catDone){try{const res=await loadTopicBatch(t,st,10);batch=res.items;if(res.done)st.catDone=true;}catch(e){st.catDone=true;}}
@@ -1246,7 +1275,6 @@ const seen=new Set(st.items.map(a=>(a.title||'').toLowerCase()));
 const fresh=batch.filter(a=>a.title&&!seen.has(a.title.toLowerCase()));
 st.items=st.items.concat(fresh);
 if(cat==='all'){st.offset+=12;if(st.rot>=(TOPICS.length||8)*2)st.done=true;}
-else if(cat==='jurnal'){if(st.rot>=6||fresh.length===0)st.done=true;}
 else{if(st.catDone&&fresh.length===0)st.done=true;}
 }catch(e){
 if(!st.items.length&&cat==='all')st.items=ARTICLES.slice();
@@ -1653,7 +1681,7 @@ st.loading=false;renderGallery();
 }
 
 /* ============ NAV / VIEWS ============ */
-const VIEW_TITLES={gallery:'Discover',library:'Growth Library',profile:'Profil'};
+const VIEW_TITLES={gallery:'Discover',library:'Growth Library',profile:'Profil',journals:'Jurnal'};
 function setTopbar(name){const g=$('#greet'),nm=$('#brandName'),tl=$('#brandTitle');if(g)g.style.display='none';if(name&&VIEW_TITLES[name]){if(nm)nm.style.display='none';if(tl){tl.textContent=VIEW_TITLES[name];tl.style.display='';}}else{if(nm)nm.style.display='';if(tl)tl.style.display='none';}}
 function showView(name,fromReader,updateNav=true){
 document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1668,6 +1696,7 @@ document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.
 }
 
 if(name==='gallery')renderGallery();
+if(name==='journals')renderJournals();
 if(name==='library')renderLibrary();
 if(name==='profile')renderProfile();
 const _restore=(fromReader&&scrollPos[name]!=null)?scrollPos[name]:0;
@@ -1675,7 +1704,7 @@ requestAnimationFrame(()=>{const s=$('#scroll');if(s)s.scrollTo({top:_restore});
 syncHash(name);
 }
 function syncHash(name){const h=name==='read'?('#/read/'+((currentArticle&&currentArticle.id)||'')):('#/'+name);if(location.hash!==h){_hashLock=true;location.hash=h;setTimeout(()=>{_hashLock=false;},0);}}
-function applyHash(){const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);const name=parts[0]||'home';if(name==='read'){const id=parts[1];if(id&&ARTICLE_INDEX[id]){if(!(currentArticle&&currentArticle.id===id&&$('#view-read').classList.contains('active')))openArticle(id);}else{showView('home');}return;}const valid=['home','gallery','library','profile'];const t=valid.includes(name)?name:'home';if(!$('#view-'+t).classList.contains('active'))showView(t);}
+function applyHash(){const parts=(location.hash||'').replace(/^#\/?/,'').split('/').filter(Boolean);const name=parts[0]||'home';if(name==='read'){const id=parts[1];if(id&&ARTICLE_INDEX[id]){if(!(currentArticle&&currentArticle.id===id&&$('#view-read').classList.contains('active')))openArticle(id);}else{showView('home');}return;}const valid=['home','gallery','library','profile','journals'];const t=valid.includes(name)?name:'home';if(!$('#view-'+t).classList.contains('active'))showView(t);}
 function refreshAll(){renderFeed();if($('#view-library').classList.contains('active'))renderLibrary();if($('#view-profile').classList.contains('active'))renderProfile();
 document.querySelectorAll('[data-save]').forEach(b=>{b.classList.toggle('saved',S.saved.includes(b.dataset.save));});
 }
@@ -1703,6 +1732,54 @@ else if(ul)ul.innerHTML=ulOld;
 }catch(e){if(introEl)introEl.innerHTML=introOld;if(ul)ul.innerHTML=ulOld;toast('Gagal memuat AI. Pastikan sudah deploy di Vercel + GROQ_API_KEY.');}
 if(btn)btn.disabled=false;_aiBusy=false;
 }
+/* ============ JOURNALS PAGE ============ */
+const JOURNAL_TOPICS=[{id:'all',name:'Semua',q:''},{id:'keuangan',name:'\ud83d\udcb0 Keuangan',q:'finance OR accounting OR economics'},{id:'sosial',name:'\ud83e\udd1d Sosial',q:'social science OR sociology'},{id:'syariah',name:'\u262a Syariah',q:'sharia OR islamic economics OR islamic finance'},{id:'sains',name:'\ud83d\udd2c Sains',q:'natural science OR physics OR biology'},{id:'kesehatan',name:'\ud83e\ude7a Kesehatan',q:'health OR medicine OR public health'},{id:'pendidikan',name:'\ud83c\udf93 Pendidikan',q:'education OR pedagogy'},{id:'teknologi',name:'\ud83d\udcbb Teknologi',q:'technology OR computer science OR engineering'},{id:'lingkungan',name:'\ud83c\udf3f Lingkungan',q:'environment OR climate OR sustainability'}];
+let jrnTopic='all';let jrnQuery='';const jrnStates={};
+function jrnKey(){return jrnQuery?('q:'+jrnQuery.toLowerCase()):('t:'+jrnTopic);}
+function renderJournalChips(){
+const wrap=$('#journalChips');if(!wrap)return;wrap.innerHTML='';
+const cs=el('div','chips-scroll');
+JOURNAL_TOPICS.forEach(function(t){
+const b=el('button','chip'+((!jrnQuery&&jrnTopic===t.id)?' active':''));
+b.textContent=t.name;
+b.onclick=function(){jrnQuery='';const i=$('#jrnInput');if(i)i.value='';const c=$('#jrnClear');if(c)c.style.display='none';jrnTopic=t.id;renderJournalChips();loadJournals(true);$('#scroll').scrollTo({top:0});};
+cs.appendChild(b);
+});
+wrap.appendChild(cs);
+}
+async function loadJournals(reset){
+const key=jrnKey();let st=jrnStates[key];
+if(reset||!st){st={items:[],page:0,done:false,loading:false};jrnStates[key]=st;}
+if(st.loading||st.done){renderJournalsView();return;}
+st.loading=true;renderJournalsView();
+try{
+const q=jrnQuery?jrnQuery:((JOURNAL_TOPICS.find(function(t){return t.id===jrnTopic;})||{}).q||'');
+const batch=await fetchJournals(st.page,q);
+st.page++;
+const seen=new Set(st.items.map(function(a){return (a.title||'').toLowerCase();}));
+const fresh=batch.filter(function(a){return a.title&&!seen.has(a.title.toLowerCase());});
+st.items=st.items.concat(fresh);regArticles(fresh);
+if(st.page>=5||fresh.length===0)st.done=true;
+}catch(e){st.done=true;}
+st.loading=false;renderJournalsView();
+}
+function renderJournals(){renderJournalChips();const st=jrnStates[jrnKey()];if(!st){loadJournals(true);return;}renderJournalsView();}
+function renderJournalsView(){
+const list=$('#journalList');const more=$('#journalMore');const st=jrnStates[jrnKey()];
+if(!list)return;
+if(!st){list.innerHTML=skeleton();if(more)more.innerHTML='';return;}
+if(st.loading&&!st.items.length){list.innerHTML=skeleton();}
+else if(!st.items.length&&st.done){list.innerHTML=emptyMsg('Tidak ada jurnal yang cocok. Coba kata kunci atau topik lain.');}
+else{list.innerHTML=st.items.map(cardFullHTML).join('');}
+if(more){
+if(st.loading&&st.items.length){more.innerHTML='<div class="more-end"><span class="spin"></span> Memuat\u2026</div>';}
+else if(st.done){more.innerHTML=st.items.length?'<div class="more-end">Sudah menampilkan semua hasil.</div>':'';}
+else if(st.items.length){more.innerHTML='<button class="loadmore-btn" id="jrnMoreBtn">Muat lebih banyak jurnal</button>';const b=$('#jrnMoreBtn');if(b)b.onclick=function(){loadJournals(false);};}
+else{more.innerHTML='';}
+}
+}
+function onJrnSearch(q){q=(q||'').trim();const c=$('#jrnClear');if(c)c.style.display=q?'':'none';jrnQuery=q;renderJournalChips();loadJournals(true);}
+
 /* ============ EVENTS ============ */
 document.addEventListener('click',e=>{
 const at=e.target.closest('[data-aitake]');
@@ -1719,6 +1796,8 @@ const cat=e.target.closest('[data-cat]');
 if(cat){activeCat=cat.dataset.cat;showView('home');renderChips();renderFeed();return;}
 const galCard=e.target.closest('#galleryGrid [data-id]');
 if(galCard){const gs=galQuery?galSearchState:galleryCache[galleryTheme];openArticle(galCard.dataset.id,(gs&&gs.items)||null);return;}
+const jm=e.target.closest('[data-more]');
+if(jm){e.preventDefault();showView('journals');return;}
 const card=e.target.closest('[data-id]');
 if(card){openArticle(card.dataset.id);return;}
 });
@@ -1726,6 +1805,8 @@ document.querySelectorAll('.nav-item').forEach(n=>{n.onclick=()=>showView(n.data
 $('#searchTop').onclick=()=>{if(galleryVisible()||(lastView||'')==='gallery'){const tg=$('#topSearchGal');if(tg){const willOpen=!tg.classList.contains('open');tg.classList.toggle('open',willOpen);if(willOpen){const gi=$('#galSearchInput');if(gi)gi.focus();}}}else if(homeVisible()||(lastView||'')==='home'){const ts=$('#topSearch');if(ts){const willOpen=!ts.classList.contains('open');ts.classList.toggle('open',willOpen);if(willOpen){const hi=$('#homeSearchInput');if(hi)hi.focus();}}}else openSearch();};
 const _ovi=$('#ovSearchInput');if(_ovi)_ovi.addEventListener('input',e=>onOvSearch(e.target.value));
 const _gsi=$('#galSearchInput');if(_gsi){_gsi.addEventListener('input',e=>{const c=$('#galSearchClear');if(c)c.style.display=e.target.value.trim()?'':'none';});_gsi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();onGalSearch(e.target.value);}});}
+const _jin=$('#jrnInput');if(_jin){_jin.addEventListener('input',e=>{const c=$('#jrnClear');if(c)c.style.display=e.target.value.trim()?'':'none';});_jin.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();onJrnSearch(e.target.value);}});}
+const _jcl=$('#jrnClear');if(_jcl)_jcl.onclick=()=>{const i=$('#jrnInput');if(i)i.value='';_jcl.style.display='none';onJrnSearch('');};
 const _hsi=$('#homeSearchInput');if(_hsi){_hsi.addEventListener('input',e=>{const c=$('#homeSearchClear');if(c)c.style.display=e.target.value.trim()?'':'none';});_hsi.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();onHomeSearch(e.target.value);}});}
 const _hsc=$('#homeSearchClear');if(_hsc)_hsc.onclick=function(){const hi=$('#homeSearchInput');if(hi){hi.value='';}onHomeSearch('');const ts=$('#topSearch');if(ts)ts.classList.remove('open');};
 const _gsc=$('#galSearchClear');if(_gsc)_gsc.onclick=function(){const gi=$('#galSearchInput');if(gi){gi.value='';}onGalSearch('');const tg=$('#topSearchGal');if(tg)tg.classList.remove('open');};
