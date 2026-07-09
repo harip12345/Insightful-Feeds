@@ -207,6 +207,7 @@ overflow:hidden;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm);
 .trend-card.trend-more{background:linear-gradient(135deg,#3b5b6b,#20353f);align-items:center;justify-content:center;width:158px}
 .trend-more .more-in{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-weight:600;font-size:13px;padding:0 12px;line-height:1.35}
 .trend-more .more-in svg{width:20px;height:20px}
+.lib-toggle{display:inline-flex;background:var(--sage-tint);border-radius:999px;padding:3px;gap:2px}.lib-toggle button{border:0;background:transparent;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--muted);padding:6px 15px;border-radius:999px;cursor:pointer;white-space:nowrap;letter-spacing:.01em}.lib-toggle button.active{background:var(--sage);color:#fff}.lib-toggle-lg{margin-bottom:14px}.lib-toggle-lg button{font-size:13.5px;padding:9px 20px}
 .rail-hint{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:26px 6px}
 .jrn-intro{padding:14px 20px 6px;color:var(--muted);font-size:13px;line-height:1.5}
 .jrn-search{display:flex;align-items:center;gap:9px;margin:8px 20px 4px;padding:11px 14px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
@@ -531,7 +532,7 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <div id="reflectSlot"></div>
 <div id="hubSlot"></div>
 
-<div class="sec-head"><div><h2>Jurnal Pilihan</h2><div class="sub">Paper &amp; riset terkurasi</div></div><a id="moreJournals" data-more="1">Lebih lengkap</a></div>
+<div class="sec-head"><div class="lib-toggle" id="homeLibToggle"><button type="button" data-lib="jurnal" class="active">Jurnal</button><button type="button" data-lib="berita">Berita</button></div><a id="moreJournals" data-more="1">Lebih lengkap</a></div>
 <div class="trend-rail" id="trendRail"></div>
 
 <div class="sec-head" id="feedHead"><div><h2>Your Daily Feed</h2><div class="sub">Baca langsung, tanpa terburu-buru</div></div><a id="refreshFeed">Refresh</a></div>
@@ -602,7 +603,8 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 
 <!-- JOURNALS -->
 <section class="view" id="view-journals">
-<div class="jrn-intro">Jelajahi paper &amp; jurnal ilmiah dari OpenAlex &amp; DOAJ. Cari topik spesifik atau kata kunci yang kamu minati.</div>
+<div class="lib-toggle lib-toggle-lg" id="jrnLibToggle"><button type="button" data-lib="jurnal" class="active">📚 Jurnal</button><button type="button" data-lib="berita">📰 Berita</button></div>
+<div class="jrn-intro" id="jrnIntro">Jelajahi paper &amp; jurnal ilmiah dari OpenAlex, Europe PMC &amp; DOAJ. Cari topik spesifik atau kata kunci yang kamu minati.</div>
 <div class="jrn-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="jrnInput" type="text" placeholder="Cari jurnal atau kata kunci..."><button id="jrnClear" class="jrn-clear" aria-label="Bersihkan" style="display:none">✕</button></div>
 <div class="chips" id="journalChips"></div>
 <div class="feed" id="journalList"></div>
@@ -791,10 +793,10 @@ const CAT_Q={psychology:'Psikologi',philosophy:'Filsafat',productivity:'Produkti
 const FALLBACK_TOPICS=['Psikologi','Filsafat','Sains','Teknologi','Sejarah','Seni','Musik','Sastra','Ekonomi','Politik','Kesehatan','Biologi','Fisika','Matematika','Astronomi','Geografi','Budaya','Olahraga','Agama','Bahasa','Lingkungan','Komputer','Kedokteran','Pendidikan','Film','Arsitektur','Kuliner','Antariksa'];
 let TOPICS=[];
 const CURATED_TOPICS=[
-{q:'Astronomi',label:'   Astronomi'},
+{q:'Astronomi',label:'�� Astronomi'},
 {q:'Luar angkasa',label:'🚀 Luar Angkasa'},
 {q:'Mitologi',label:'🐉 Mitologi'},
-{q:'Psikologi',label:'    Psikologi'},
+{q:'Psikologi',label:'��� Psikologi'},
 {q:'Filsafat',label:'📜 Filsafat'},
 {q:'Sejarah',label:'🏛️ Sejarah'},
 {q:'Fisika',label:'⚛️ Fisika'},
@@ -803,12 +805,12 @@ const CURATED_TOPICS=[
 {q:'Teknologi',label:'💡 Teknologi'},
 {q:'Kecerdasan buatan',label:'🤖 Kecerdasan Buatan'},
 {q:'Seni',label:'🎨 Seni'},
-{q:'Musik',label:'         Musik'},
+{q:'Musik',label:'�������� Musik'},
 {q:'Film',label:'🎬 Film'},
 {q:'Arsitektur',label:'🏰 Arsitektur'},
 {q:'Kuliner',label:'🍜 Kuliner'},
 {q:'Peradaban kuno',label:'🗿 Peradaban Kuno'},
-{q:'Penjelajahan',label:'         Penjelajahan'},
+{q:'Penjelajahan',label:'�������� Penjelajahan'},
 {q:'Samudra',label:'🌊 Samudra'},
 {q:'Ekonomi',label:'📈 Ekonomi'},
 {q:'Bahasa',label:'🗣️ Bahasa'},
@@ -889,7 +891,7 @@ async function ensureFullForAI(a){
 if(!a||a._aiFullDone)return;
 if(a.ftSource&&a.ftId&&!a._ftDone){try{await ensureJournalFull(a);}catch(e){}}
 if(a._fullHtml){a._aiFullDone=true;return;}
-if(a.kind==='jurnal'&&a.srcUrl){a._aiFullDone=true;try{const r=await window.fetch('/api/extract?u='+encodeURIComponent(a.srcUrl));if(r.ok){const j=await r.json();if(j&&j.text&&j.text.length>400){a._aiText=j.text;}}}catch(e){}return;}
+if((a.kind==='jurnal'||a.kind==='berita')&&a.srcUrl){a._aiFullDone=true;try{const r=await window.fetch('/api/extract?u='+encodeURIComponent(a.srcUrl));if(r.ok){const j=await r.json();if(j&&j.text&&j.text.length>400){a._aiText=j.text;}}}catch(e){}return;}
 a._aiFullDone=true;
 }
 function aiFmt(s){s=esc(s||'');s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/^\s*[-\u2022*]\s+/gm,'\u2022 ');return s.replace(/\n/g,'<br>');}
@@ -997,6 +999,7 @@ const vh=$('#view-home');if(vh&&vh.classList.contains('active'))renderTrending()
 }
 function renderTrending(){
 const rail=$('#trendRail');if(!rail)return;
+if(libMode==='berita'){renderTrendingNews(rail);return;}
 const arrow=svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>');
 if(homeJournals===null){rail.innerHTML='<div class="rail-hint"><span class="spin"></span> Memuat jurnal\u2026</div>';loadHomeJournals();return;}
 if(!homeJournals.length){rail.innerHTML='<div class="rail-hint">Jurnal tampil saat aplikasi online.</div><div class="trend-card trend-more" data-more="1"><div class="more-in"><span>Buka halaman jurnal</span>'+arrow+'</div></div>';return;}
@@ -1191,6 +1194,129 @@ const results=await Promise.allSettled([fetchOpenAlex((page||0)+1,q),fetchEurope
 let items=[];results.forEach(function(r){if(r.status==='fulfilled'&&Array.isArray(r.value))items=items.concat(r.value);});
 const seen={};const out=[];items.forEach(function(a){if(!a)return;const key=(a.title||'').toLowerCase();if(key&&!seen[key]){seen[key]=1;out.push(a);}});
 return shuffle(out);
+}
+
+/* ============ NEWS (Berita) ============ */
+let libMode='jurnal';
+function libNoun(){return libMode==='berita'?'berita':'jurnal';}
+const NBG=grad('#5b3b3b','#3a1f1f');
+const NEWS_TOPICS=[{id:'all',name:'Semua',cat:'',country:'id'},{id:'nasional',name:'\ud83c\udde9\ud83c\uddee Nasional',cat:'top',country:'id'},{id:'internasional',name:'\ud83c\udf10 Internasional',cat:'world',country:''},{id:'bisnis',name:'\ud83d\udcbc Bisnis',cat:'business',country:'id'},{id:'teknologi',name:'\ud83d\udcbb Teknologi',cat:'technology',country:''},{id:'sains',name:'\ud83d\udd2c Sains',cat:'science',country:''},{id:'kesehatan',name:'\ud83e\ude7a Kesehatan',cat:'health',country:''},{id:'olahraga',name:'\u26bd Olahraga',cat:'sports',country:'id'},{id:'hiburan',name:'\ud83c\udfac Hiburan',cat:'entertainment',country:''}];
+const NEWS_FEEDS=[{name:'Antara',url:'https://www.antaranews.com/rss/terkini.xml'},{name:'Kompas',url:'https://rss.kompas.com/api/feed/khusus/rss'},{name:'Detik',url:'https://news.detik.com/rss'},{name:'Tempo',url:'https://www.tempo.co/rss/nasional'},{name:'CNBC Indonesia',url:'https://www.cnbcindonesia.com/news/rss'},{name:'Republika',url:'https://www.republika.co.id/rss'},{name:'Liputan6',url:'https://feed.liputan6.com/rss'}];
+function currentTopics(){return libMode==='berita'?NEWS_TOPICS:JOURNAL_TOPICS;}
+function newsBody(a){
+var h='<h3>Ringkasan</h3>'+buildBody(a.absRaw||'');
+if(a._fullHtml){h+='<h3>Isi Lengkap</h3>'+a._fullHtml;}
+h+='<h3>Detail Berita</h3>';
+h+='<p><strong>Sumber:</strong> '+esc(a.catName||'-')+'</p>';
+if(a.author&&a.author!=='Redaksi')h+='<p><strong>Penulis:</strong> '+esc(a.author)+'</p>';
+if(a.dateLabel)h+='<p><strong>Terbit:</strong> '+esc(a.dateLabel)+'</p>';
+if(a.srcUrl)h+='<p><a class="paper-link" href="'+esc(a.srcUrl)+'" target="_blank" rel="noopener">Baca berita lengkap di sumber</a></p>';
+return h;
+}
+function newsArticle(o){
+var desc=clean(o.description||'');
+if(desc.length<20)desc=clean(o.title||'');
+if(!o.title||desc.length<10)return null;
+var sents=sentences(desc);var take=sents.slice(0,3);if(!take.length)take=[desc.slice(0,140)];
+var a={id:o.idpfx+'_'+o.rawid,cat:'berita',catName:o.source||'Berita',title:o.title||'Tanpa judul',kind:'berita',full:true,author:o.author||'Redaksi',role:(o.source||'Berita')+(o.dateLabel?(' \u00b7 '+o.dateLabel):''),rt:Math.max(2,estRead(desc)),bg:o.bg||NBG,image:o.image||'',iw:0,ih:0,excerpt:clean(sents[0]||desc).slice(0,180),takeaways:take.map(clean),cites:[(o.source||'Berita')+(o.dateLabel?(', '+o.dateLabel):'')+'. '+(o.url||'')]};
+a.absRaw=desc;a.srcUrl=o.url||'';a.dateLabel=o.dateLabel||'';a._ts=o.ts||0;
+a.body=newsBody(a);
+return a;
+}
+function fmtDate(d){try{if(!d)return '';var dt=new Date(d);if(isNaN(dt.getTime()))return '';return dt.toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});}catch(e){return '';}}
+function rssTag(block,tag){var m=block.match(new RegExp('<'+tag+'[^>]*>([\\s\\S]*?)<\\/'+tag+'>','i'));if(!m)return '';var v=m[1];v=v.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1');return v;}
+function parseRSS(xml,source){
+var out=[];var re=/<item[\s>][\s\S]*?<\/item>/gi;var m;
+while((m=re.exec(xml))){
+var it=m[0];
+var title=clean(decodeEnt(rssTag(it,'title').replace(/<[^>]+>/g,' ')));
+var link=clean(rssTag(it,'link').replace(/<[^>]+>/g,' '));
+if(!link){var la=it.match(/<link[^>]*href=["']([^"']+)["']/i);if(la)link=la[1];}
+var descRaw=rssTag(it,'description')||rssTag(it,'content:encoded');
+var img='';var en=it.match(/<enclosure[^>]*url=["']([^"']+)["']/i);if(en)img=en[1];
+if(!img){var mc=it.match(/<media:(?:content|thumbnail)[^>]*url=["']([^"']+)["']/i);if(mc)img=mc[1];}
+if(!img){var di=descRaw.match(/<img[^>]*src=["']([^"']+)["']/i);if(di)img=di[1];}
+var desc=clean(decodeEnt(descRaw.replace(/<[^>]+>/g,' ')));
+var date=clean(rssTag(it,'pubDate')||rssTag(it,'dc:date'));
+var ts=date?(Date.parse(date)||0):0;
+if(!title)continue;
+var art=newsArticle({idpfx:'n_rss',rawid:((link||title).replace(/[^a-zA-Z0-9]/g,'').slice(-24))||Math.random().toString(36).slice(2),title:title,description:desc,url:link,image:(/^https?:/.test(img)?img:''),source:source,dateLabel:fmtDate(date),ts:ts,bg:NBG});
+if(art)out.push(art);
+}
+return out;
+}
+async function fetchRSSFeed(feed){
+try{var r=await fetch(feed.url);if(!r.ok)return [];var xml=await r.text();return parseRSS(xml,feed.name);}catch(e){return [];}
+}
+async function fetchNewsData(page,q,tc){
+try{
+var qs=[];if(q)qs.push('q='+encodeURIComponent(q));
+if(tc&&tc.cat)qs.push('category='+encodeURIComponent(tc.cat));
+if(tc&&tc.country)qs.push('country='+encodeURIComponent(tc.country));
+if(page&&typeof page==='string')qs.push('page='+encodeURIComponent(page));
+var r=await window.fetch('/api/news?'+qs.join('&'));if(!r.ok)return [];
+var j=await r.json();
+return (j.results||[]).map(function(res){
+var desc=res.description||res.content||res.title||'';
+var img=res.image_url||'';
+var creator=(res.creator&&res.creator.length)?res.creator[0]:'';
+return newsArticle({idpfx:'n_nd',rawid:String(res.article_id||Math.random().toString(36).slice(2)),title:res.title,description:desc,url:res.link||'',image:(/^https?:/.test(img)?img:''),source:res.source_id?('NewsData \u00b7 '+res.source_id):'NewsData',author:creator,dateLabel:fmtDate(res.pubDate),ts:res.pubDate?(Date.parse(res.pubDate)||0):0,bg:NBG});
+}).filter(Boolean);
+}catch(e){return [];}
+}
+async function fetchNews(page,q,tc){
+tc=tc||NEWS_TOPICS[0];
+if((page||0)>=1)return [];
+var tasks=[fetchNewsData(0,q,tc)];
+var useRSS=(!q&&(tc.id==='all'||tc.id==='nasional'))||!!q;
+if(useRSS){NEWS_FEEDS.forEach(function(f){tasks.push(fetchRSSFeed(f));});}
+var results=await Promise.allSettled(tasks);
+var items=[];results.forEach(function(r){if(r.status==='fulfilled'&&Array.isArray(r.value))items=items.concat(r.value);});
+if(q){var ql=q.toLowerCase();items=items.filter(function(a){return ((a.title||'')+' '+(a.absRaw||'')).toLowerCase().indexOf(ql)>=0;});}
+var seen={};var out=[];items.forEach(function(a){if(!a)return;var k=(a.title||'').toLowerCase();if(k&&!seen[k]){seen[k]=1;out.push(a);}});
+out.sort(function(x,y){return (y._ts||0)-(x._ts||0);});
+return out;
+}
+async function ensureNewsFull(a){
+if(!a||a._ftDone)return false;a._ftDone=true;
+if(!a.srcUrl)return false;
+try{var r=await window.fetch('/api/extract?u='+encodeURIComponent(a.srcUrl));
+if(r.ok){var j=await r.json();if(j&&j.text&&j.text.length>800){a._fullHtml=txtToHtml(j.text);a._aiText=j.text;a.body=newsBody(a);a.rt=Math.max(2,estRead((a.absRaw||'')+' '+j.text));return true;}}}catch(e){}
+return false;
+}
+function maybeLoadNewsFull(a){
+if(!a||a.kind!=='berita'||a._ftDone||!a.srcUrl)return;
+const art=$('#view-read .article');
+if(art)art.insertAdjacentHTML('beforeend','<p class="more-end" id="jrnFullLoad"><span class="spin"></span> Memuat isi berita\u2026</p>');
+ensureNewsFull(a).then(function(ok){if(currentArticle!==a)return;if(ok){const a2=$('#view-read .article');if(a2)a2.innerHTML=a.body;const rt=$('#view-read .rt');if(rt)rt.textContent=a.rt+' min read';}else{const ld=$('#jrnFullLoad');if(ld)ld.outerHTML='<p class="more-end">Isi lengkap tidak tersedia \u2014 buka sumber untuk berita penuh.</p>';}});
+}
+let homeNews=null;let homeNewsLoading=false;
+async function loadHomeNews(){
+if(homeNewsLoading)return;homeNewsLoading=true;
+try{const items=await fetchNews(0,'',NEWS_TOPICS[0]);homeNews=items;regArticles(items);}catch(e){if(!homeNews)homeNews=[];}
+homeNewsLoading=false;
+const vh=$('#view-home');if(vh&&vh.classList.contains('active'))renderTrending();
+}
+function renderTrendingNews(rail){
+rail=rail||$('#trendRail');if(!rail)return;
+const arrow=svg('<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>');
+if(homeNews===null){rail.innerHTML='<div class="rail-hint"><span class="spin"></span> Memuat berita\u2026</div>';loadHomeNews();return;}
+if(!homeNews.length){rail.innerHTML='<div class="rail-hint">Berita tampil saat aplikasi online.</div><div class="trend-card trend-more" data-more="1"><div class="more-in"><span>Buka halaman berita</span>'+arrow+'</div></div>';return;}
+const t=homeNews.slice(0,5);
+const kicker=svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10"/><path d="M7 12h6"/><path d="M7 16h8"/>');
+rail.innerHTML=t.map(function(a){return '<div class="trend-card" data-id="'+a.id+'">'+coverPH(a)+'<div class="grad"></div>'+fullBadge(a)+'<span class="kicker">'+kicker+' '+esc(a.catName)+'</span><h4>'+esc(a.title)+'</h4><div class="m">'+esc(a.author)+' \u00b7 '+a.rt+' min</div></div>';}).join('')+'<div class="trend-card trend-more" data-more="1"><div class="more-in"><span>Muat berita lebih lengkap</span>'+arrow+'</div></div>';
+}
+function renderLibToggle(){document.querySelectorAll('[data-lib]').forEach(function(b){b.classList.toggle('active',b.dataset.lib===libMode);});}
+function setLibMode(m){
+if(m!=='jurnal'&&m!=='berita')return;
+if(libMode===m)return;
+libMode=m;jrnQuery='';jrnTopic='all';
+const i=$('#jrnInput');if(i){i.value='';i.placeholder=(m==='berita')?'Cari berita atau kata kunci...':'Cari jurnal atau kata kunci...';}
+const c=$('#jrnClear');if(c)c.style.display='none';
+const intro=$('#jrnIntro');if(intro)intro.textContent=(m==='berita')?'Berita nasional & internasional dari NewsData.io + RSS Antara, Kompas, Detik, Tempo, CNBC Indonesia, Republika & Liputan6.':'Jelajahi paper & jurnal ilmiah dari OpenAlex, Europe PMC & DOAJ. Cari topik spesifik atau kata kunci yang kamu minati.';
+renderLibToggle();
+renderTrending();
+const vj=$('#view-journals');if(vj&&vj.classList.contains('active')){setTopbar('journals');renderJournalChips();loadJournals(true);}
 }
 
 /* ============ FEED (with pagination) ============ */
@@ -1575,6 +1701,7 @@ $('#scroll').scrollTo({top:0});
 if(photo){const g=$('#readerGrad');if(g)g.style.opacity='0';const track=$('#heroTrack');if(track){track.scrollLeft=track.clientWidth*idx;const slides=track.querySelectorAll('.hero-slide');const cur=slides[idx];if(cur)cur.querySelectorAll('[data-bg]').forEach(loadHeroBg);bindHeroCarousel();}}
 maybeLoadFull(a);
 maybeLoadJournalFull(a);
+maybeLoadNewsFull(a);
 }
 function toggleRead(id){
 if(!S.read.includes(id)){
@@ -1792,7 +1919,7 @@ st.loading=false;renderGallery();
 
 /* ============ NAV / VIEWS ============ */
 const VIEW_TITLES={gallery:'Discover',library:'Growth Library',profile:'Profil',journals:'Jurnal'};
-function setTopbar(name){const g=$('#greet'),nm=$('#brandName'),tl=$('#brandTitle');if(g)g.style.display='none';if(name&&VIEW_TITLES[name]){if(nm)nm.style.display='none';if(tl){tl.textContent=VIEW_TITLES[name];tl.style.display='';}}else{if(nm)nm.style.display='';if(tl)tl.style.display='none';}}
+function setTopbar(name){const g=$('#greet'),nm=$('#brandName'),tl=$('#brandTitle');if(g)g.style.display='none';if(name&&VIEW_TITLES[name]){if(nm)nm.style.display='none';if(tl){tl.textContent=(name==='journals'?(libMode==='berita'?'Berita':'Jurnal'):VIEW_TITLES[name]);tl.style.display='';}}else{if(nm)nm.style.display='';if(tl)tl.style.display='none';}}
 function showView(name,fromReader,updateNav=true){
 document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
 $('#view-'+name).classList.add('active');
@@ -1846,11 +1973,11 @@ if(btn)btn.disabled=false;_aiBusy=false;
 /* ============ JOURNALS PAGE ============ */
 const JOURNAL_TOPICS=[{id:'all',name:'Semua',q:''},{id:'keuangan',name:'\ud83d\udcb0 Keuangan',q:'finance OR accounting OR economics'},{id:'sosial',name:'\ud83e\udd1d Sosial',q:'social science OR sociology'},{id:'syariah',name:'\u262a Syariah',q:'sharia OR islamic economics OR islamic finance'},{id:'sains',name:'\ud83d\udd2c Sains',q:'natural science OR physics OR biology'},{id:'kesehatan',name:'\ud83e\ude7a Kesehatan',q:'health OR medicine OR public health'},{id:'pendidikan',name:'\ud83c\udf93 Pendidikan',q:'education OR pedagogy'},{id:'teknologi',name:'\ud83d\udcbb Teknologi',q:'technology OR computer science OR engineering'},{id:'lingkungan',name:'\ud83c\udf3f Lingkungan',q:'environment OR climate OR sustainability'}];
 let jrnTopic='all';let jrnQuery='';const jrnStates={};
-function jrnKey(){return jrnQuery?('q:'+jrnQuery.toLowerCase()):('t:'+jrnTopic);}
+function jrnKey(){return libMode+'|'+(jrnQuery?('q:'+jrnQuery.toLowerCase()):('t:'+jrnTopic));}
 function renderJournalChips(){
 const wrap=$('#journalChips');if(!wrap)return;wrap.innerHTML='';
 const cs=el('div','chips-scroll');
-JOURNAL_TOPICS.forEach(function(t){
+currentTopics().forEach(function(t){
 const b=el('button','chip'+((!jrnQuery&&jrnTopic===t.id)?' active':''));
 b.textContent=t.name;
 b.onclick=function(){jrnQuery='';const i=$('#jrnInput');if(i)i.value='';const c=$('#jrnClear');if(c)c.style.display='none';jrnTopic=t.id;renderJournalChips();loadJournals(true);$('#scroll').scrollTo({top:0});};
@@ -1864,8 +1991,9 @@ if(reset||!st){st={items:[],page:0,done:false,loading:false};jrnStates[key]=st;}
 if(st.loading||st.done){renderJournalsView();return;}
 st.loading=true;renderJournalsView();
 try{
-const q=jrnQuery?jrnQuery:((JOURNAL_TOPICS.find(function(t){return t.id===jrnTopic;})||{}).q||'');
-const batch=await fetchJournals(st.page,q);
+let batch;
+if(libMode==='berita'){const tc=NEWS_TOPICS.find(function(t){return t.id===jrnTopic;})||NEWS_TOPICS[0];batch=await fetchNews(st.page,jrnQuery,tc);}
+else{const jq=jrnQuery?jrnQuery:((JOURNAL_TOPICS.find(function(t){return t.id===jrnTopic;})||{}).q||'');batch=await fetchJournals(st.page,jq);}
 st.page++;
 const seen=new Set(st.items.map(function(a){return (a.title||'').toLowerCase();}));
 const fresh=batch.filter(function(a){return a.title&&!seen.has(a.title.toLowerCase());});
@@ -1880,12 +2008,12 @@ const list=$('#journalList');const more=$('#journalMore');const st=jrnStates[jrn
 if(!list)return;
 if(!st){list.innerHTML=skeleton();if(more)more.innerHTML='';return;}
 if(st.loading&&!st.items.length){list.innerHTML=skeleton();}
-else if(!st.items.length&&st.done){list.innerHTML=emptyMsg('Tidak ada jurnal yang cocok. Coba kata kunci atau topik lain.');}
+else if(!st.items.length&&st.done){list.innerHTML=emptyMsg('Tidak ada '+libNoun()+' yang cocok. Coba kata kunci atau topik lain.');}
 else{list.innerHTML=st.items.map(cardFullHTML).join('');}
 if(more){
 if(st.loading&&st.items.length){more.innerHTML='<div class="more-end"><span class="spin"></span> Memuat\u2026</div>';}
 else if(st.done){more.innerHTML=st.items.length?'<div class="more-end">Sudah menampilkan semua hasil.</div>':'';}
-else if(st.items.length){more.innerHTML='<button class="loadmore-btn" id="jrnMoreBtn">Muat lebih banyak jurnal</button>';const b=$('#jrnMoreBtn');if(b)b.onclick=function(){loadJournals(false);};}
+else if(st.items.length){more.innerHTML='<button class="loadmore-btn" id="jrnMoreBtn">Muat lebih banyak '+libNoun()+'</button>';const b=$('#jrnMoreBtn');if(b)b.onclick=function(){loadJournals(false);};}
 else{more.innerHTML='';}
 }
 }
@@ -1893,6 +2021,8 @@ function onJrnSearch(q){q=(q||'').trim();const c=$('#jrnClear');if(c)c.style.dis
 
 /* ============ EVENTS ============ */
 document.addEventListener('click',e=>{
+const lb=e.target.closest('[data-lib]');
+if(lb){e.preventDefault();e.stopPropagation();setLibMode(lb.dataset.lib);return;}
 const at=e.target.closest('[data-aitake]');
 if(at){e.stopPropagation();e.preventDefault();runHomeTakeaways(at.dataset.aitake,at);return;}
 const sv=e.target.closest('[data-save]');
