@@ -30,6 +30,10 @@
 --shadow-md:0 6px 24px rgba(45,79,61,.10);
 --serif:"Playfair Display",Georgia,"Times New Roman",serif;
 --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+--chart-bg:#e9efe9;
+--chart-bar:#3d6b52;
+--chart-bar-hover:#2d4f3d;
+--chart-label:#7d7a75;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -55,6 +59,41 @@ box-shadow:0 0 60px rgba(0,0,0,.12);
 @media(min-width:520px){
 body{padding:0;background:#ddd9d3}
 .app{height:100vh;min-height:100vh;border-radius:0;box-shadow:0 0 60px rgba(0,0,0,.14)}
+}
+
+/* ---------- Daily Stats Card ---------- */
+.daily-stats-card{
+background:var(--paper);border:1px solid var(--border);border-radius:16px;
+padding:16px 18px;
+margin:14px 20px 6px;
+box-shadow:var(--shadow-sm);
+}
+.daily-stats-card h3{
+font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ink);margin-bottom:12px;
+}
+.daily-stats-card .chart-wrap{
+display:flex;justify-content:space-between;align-items:flex-end;height:100px;gap:8px;
+border-bottom:1px solid var(--border);
+padding-bottom:5px;
+}
+.daily-stats-card .chart-bar-col{
+display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;
+}
+.daily-stats-card .bar-label{
+font-size:11px;color:var(--chart-label);margin-top:5px;width:100%;text-align:center;
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.daily-stats-card .bar-segment{
+width:100%;background:var(--chart-bar);border-radius:4px 4px 0 0;
+transition:height .3s ease, background .2s ease;
+min-height:3px;
+cursor:pointer;
+}
+.daily-stats-card .bar-segment:hover{
+background:var(--chart-bar-hover);
+}
+.daily-stats-card .total-daily-reads{
+font-size:12px;color:var(--muted);text-align:center;margin-top:10px;
 }
 
 /* ---------- Top Bar ---------- */
@@ -598,6 +637,11 @@ padding:8px 6px calc(8px + env(safe-area-inset-bottom));
 <div class="stat"><div class="v" id="pStreak">7</div><div class="k">Best Streak</div></div>
 <div class="stat"><div class="v" id="pMin">0</div><div class="k">Minutes</div></div>
 </div>
+<div class="daily-stats-card">
+<h3>📊 Bacaan Harian</h3>
+<div class="chart-wrap" id="dailyChart"></div>
+<div class="total-daily-reads" id="totalDailyReads">0 artikel minggu ini</div>
+</div>
 <div class="sec-head"><div><h2>Achievements</h2></div></div>
 <div class="badges" id="badgeGrid"></div>
 <div style="height:20px"></div>
@@ -778,7 +822,7 @@ const store={
 get(){try{return JSON.parse(localStorage.getItem('insight_v1'))||{}}catch(e){return{}}},
 set(s){localStorage.setItem('insight_v1',JSON.stringify(s))}
 };
-let S=Object.assign({saved:[],read:[],ritual:{r1:true,r2:false,r3:true},minutes:0},store.get());
+let S=Object.assign({saved:[],read:[],ritual:{r1:true,r2:false,r3:true},minutes:0,dailyReads:{}},store.get());
 function save(){store.set(S)}
 let activeCat='all', currentArticle=null, lastView='home';
 
@@ -1601,17 +1645,56 @@ $('#savedList').innerHTML=sv.length?sv.map(cardHTML).join(''):`<div class="empty
 
 /* ============ RENDER: PROFILE ============ */
 function renderProfile(){
-const readN=S.read.length;
+const readN=S.read.length, goal=10;
 const xp=readN*20, level=4+Math.floor(xp/100), into=xp%100;
 $('#pRead').textContent=readN;
 $('#pMin').textContent=S.minutes;
-$('#pStreak').textContent=7;
+$('#pStreak').textContent=7; // TODO: Calculate actual streak
 $('#xpTxt').textContent=`${into} / 100 XP`;
 $('#xpBar').style.width=into+'%';
 $('#pLevelLbl').textContent=`Level ${level} · Curious Mind`;
 $('#badgeGrid').innerHTML=BADGES.map(b=>`<div class="badge${b.got?'':' locked'}">
 <div class="medal">${svg(BADGE_ICONS[b.ic])}</div><div class="bn">${b.n}</div>
 </div>`).join('');
+renderDailyChart();
+}
+
+function renderDailyChart() {
+    const dailyChart = $('#dailyChart');
+    const totalDailyReadsEl = $('#totalDailyReads');
+    if (!dailyChart || !totalDailyReadsEl) return;
+
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 6);
+
+    const dailyData = {};
+    let totalReadsThisWeek = 0;
+    
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(sevenDaysAgo);
+        d.setDate(sevenDaysAgo.getDate() + i);
+        const dateString = d.toISOString().slice(0, 10);
+        const reads = S.dailyReads[dateString] || 0;
+        dailyData[dateString] = reads;
+        totalReadsThisWeek += reads;
+    }
+
+    const maxReads = Math.max(...Object.values(dailyData), 1); // Ensure min height for bars
+
+    dailyChart.innerHTML = Object.keys(dailyData).map(dateString => {
+        const reads = dailyData[dateString];
+        const height = (reads / maxReads) * 100; // Percentage of max height
+        const dayName = new Date(dateString).toLocaleDateString('id-ID', { weekday: 'short' });
+        return `
+            <div class="chart-bar-col">
+                <div class="bar-segment" style="height: ${height}%;" title="${reads} artikel"></div>
+                <div class="bar-label">${dayName}</div>
+            </div>
+        `;
+    }).join('');
+
+    totalDailyReadsEl.textContent = `${totalReadsThisWeek} artikel minggu ini`;
 }
 
 /* ============ READER ============ */
@@ -1735,6 +1818,9 @@ function toggleRead(id){
 if(!S.read.includes(id)){
 S.read.push(id);
 const a=ARTICLES.find(x=>x.id===id);S.minutes+=a?a.rt:0;
+// Track daily reading stats
+const today=new Date().toISOString().slice(0,10);
+S.dailyReads[today]=(S.dailyReads[today]||0)+1;
 save();toast('Nice — insight completed! +20 XP');
 const btn=$('#markRead');if(btn){btn.classList.add('done');btn.innerHTML=svg('<path d="M20 6 9 17l-5-5"/>')+' Completed';}
 }else{toast('Already read');}
